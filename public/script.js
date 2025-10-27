@@ -243,3 +243,8 @@ checkDueNotifications();
 
 loadClients();
 switchView('dashboard');
+// 🔁 Auto-refresh every 60 seconds
+setInterval(() => {
+  fetchClients(); // or reload client data function
+}, 60000);
+

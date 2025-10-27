@@ -1,6 +1,7 @@
 /**
- * Pro Secure server.js - Brylle's Network & Data Solution (Render-ready, fixed timezone)
+ * Pro Secure server.js - Brylle's Network & Data Solution (Render-ready + Email + Auto Refresh)
  */
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const fs = require('fs').promises;
@@ -8,6 +9,7 @@ const path = require('path');
 const cron = require('node-cron');
 const { v4: uuidv4 } = require('uuid');
 const http = require('http');
+const nodemailer = require('nodemailer'); // ✅ Email support
 
 const app = express();
 const server = http.createServer(app);
@@ -19,6 +21,16 @@ const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
 const NOTIFS_FILE = path.join(DATA_DIR, 'notifications.json');
 const SMS_LOG = path.join(DATA_DIR, 'sms.log');
+
+// Email config
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
+const ALERT_EMAIL = process.env.ALERT_EMAIL || EMAIL_USER;
+
+const transporter = EMAIL_USER && EMAIL_PASS ? nodemailer.createTransport({
+  service: 'gmail',
+  auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+}) : null;
 
 // Middleware
 app.use(express.json());
@@ -63,12 +75,22 @@ function formatDateISO(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// ===== Simulated SMS =====
-async function sendSMS(phone, message) {
-  const line = `[${new Date().toISOString()}] to ${phone}: ${message}\n`;
-  await fs.appendFile(SMS_LOG, line);
-  console.log(line);
-  return { success: true };
+async function sendEmail(subject, text) {
+  if (!transporter) {
+    console.log('⚠️ Email not configured');
+    return;
+  }
+  try {
+    await transporter.sendMail({
+      from: EMAIL_USER,
+      to: ALERT_EMAIL,
+      subject,
+      text
+    });
+    console.log(`📧 Email sent: ${subject}`);
+  } catch (err) {
+    console.error('❌ Email failed:', err);
+  }
 }
 
 // ===== Auth Middleware =====
@@ -95,15 +117,9 @@ app.get('/api/clients', requireAuth, async (req, res) => {
 
   for (const c of clients) {
     if (!c.dueDate) continue;
-
     const duePH = new Date(new Date(c.dueDate).toLocaleString("en-US", { timeZone: "Asia/Manila" }));
     const dueOnly = new Date(duePH.getFullYear(), duePH.getMonth(), duePH.getDate());
-
-    if (todayOnly > dueOnly) {
-      c.status = 'Inactive';
-    } else {
-      c.status = 'Active';
-    }
+    c.status = todayOnly > dueOnly ? 'Inactive' : 'Active';
   }
 
   await writeClients(clients);
@@ -187,7 +203,7 @@ app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
   }
 });
 
-// Run Check Now Function (Fixed Manila Time)
+// Run Check Now Function + Email
 async function runCheckNow() {
   const clients = await readClients();
   const todayPH = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
@@ -196,7 +212,6 @@ async function runCheckNow() {
 
   for (const c of clients) {
     if (!c.dueDate) continue;
-
     const duePH = new Date(new Date(c.dueDate).toLocaleString("en-US", { timeZone: "Asia/Manila" }));
     const dueOnly = new Date(duePH.getFullYear(), duePH.getMonth(), duePH.getDate());
 
@@ -217,6 +232,7 @@ async function runCheckNow() {
 
         await appendNotif(notif);
         io.emit('notification', notif);
+        await sendEmail(`Client Overdue: ${c.name}`, msg); // ✅ Email alert
       }
     }
   }
