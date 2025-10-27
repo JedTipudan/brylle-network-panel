@@ -1,5 +1,5 @@
 /**
- * Pro Secure server.js - Brylle's Network & Data Solution (Render-ready)
+ * Pro Secure server.js - Brylle's Network & Data Solution (Render-ready, fixed timezone)
  */
 const express = require('express');
 const session = require('express-session');
@@ -86,17 +86,26 @@ app.get('/dashboard', requireAuth, (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
 
-// 🧠 Auto-update statuses
+// 🧠 Auto-update statuses (Fixed Manila Time)
 app.get('/api/clients', requireAuth, async (req, res) => {
   const clients = await readClients();
-  const today = new Date();
+
+  const todayPH = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+  const todayOnly = new Date(todayPH.getFullYear(), todayPH.getMonth(), todayPH.getDate());
 
   for (const c of clients) {
     if (!c.dueDate) continue;
-    const due = new Date(c.dueDate);
-    if (today > due) c.status = 'Inactive';
-    else if (c.status !== 'Paid') c.status = 'Active';
+
+    const duePH = new Date(new Date(c.dueDate).toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+    const dueOnly = new Date(duePH.getFullYear(), duePH.getMonth(), duePH.getDate());
+
+    if (todayOnly > dueOnly) {
+      c.status = 'Inactive';
+    } else {
+      c.status = 'Active';
+    }
   }
+
   await writeClients(clients);
   res.json(clients);
 });
@@ -178,16 +187,20 @@ app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
   }
 });
 
-// Run Check Now Function
+// Run Check Now Function (Fixed Manila Time)
 async function runCheckNow() {
   const clients = await readClients();
-  const today = formatDateISO(new Date());
+  const todayPH = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+  const todayOnly = new Date(todayPH.getFullYear(), todayPH.getMonth(), todayPH.getDate());
   let updated = false;
 
   for (const c of clients) {
     if (!c.dueDate) continue;
 
-    if (c.dueDate <= today) {
+    const duePH = new Date(new Date(c.dueDate).toLocaleString("en-US", { timeZone: "Asia/Manila" }));
+    const dueOnly = new Date(duePH.getFullYear(), duePH.getMonth(), duePH.getDate());
+
+    if (todayOnly > dueOnly) {
       if (c.status !== 'Inactive') {
         c.status = 'Inactive';
         updated = true;
@@ -247,7 +260,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
   io.on('connection', s => console.log('Socket connected:', s.id));
 
-  // Daily auto check (8 AM)
+  // Daily auto check (8 AM Manila Time)
   cron.schedule('0 8 * * *', async () => {
     console.log('⏰ Daily Check Triggered');
     await runCheckNow();
