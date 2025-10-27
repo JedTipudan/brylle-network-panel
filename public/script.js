@@ -13,6 +13,7 @@ const els = {
   plan: document.getElementById('plan'),
   location: document.getElementById('location'),
   installDate: document.getElementById('installDate'),
+  billingCycle: document.getElementById('billingCycle'),
   addBtn: document.getElementById('addBtn'),
   runCheck: document.getElementById('runCheck'),
   clientsTable: document.querySelector('#clientsTable tbody'),
@@ -120,11 +121,14 @@ els.addBtn.onclick = async () => {
   const plan = els.plan.value;
   const location = els.location.value;
   const installDate = els.installDate.value;
+  const billingCycle = parseInt(els.billingCycle.value, 10);
 
   if (!name || !phone || !installDate) return showToast('Fill all required fields');
 
-  // Set dueDate same as installDate
-  const dueDate = installDate;
+  // ✅ Automatically base due date on installation date
+  const dueDateObj = new Date(installDate);
+  dueDateObj.setDate(dueDateObj.getDate() + billingCycle);
+  const dueDate = dueDateObj.toISOString().split('T')[0];
 
   await api('/api/clients', {
     method: 'POST',
@@ -134,7 +138,7 @@ els.addBtn.onclick = async () => {
 
   showToast('Client added');
   els.name.value = els.phone.value = els.installDate.value = '';
-  loadClients();
+  loadClients(); // refresh list immediately
 };
 
 // === Run Check ===
@@ -191,8 +195,11 @@ async function checkDueNotifications() {
   } catch (err) { console.error("Notification check failed:", err); }
 }
 
+// === Auto Reload / Refresh ===
+setInterval(loadClients, 30000); // every 30 seconds refresh clients
+
 setInterval(checkDueNotifications, 60000);
 checkDueNotifications();
 
-loadClients();
+loadClients(); // initial load
 switchView('dashboard');
