@@ -163,7 +163,17 @@ app.delete('/api/clients/:id', requireAuth, async (req, res) => {
 });
 
 // Notifications
+
 app.get('/api/notifications', requireAuth, async (req, res) => res.json(await readNotifs()));
+// === Clear All Notifications ===
+app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
+  try {
+    await fs.writeFile(NOTIFS_FILE, '[]', 'utf8');
+    res.json({ ok: true, message: 'All notifications cleared' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear notifications' });
+  }
+});
 
 // Run check now
 async function runCheckNow() {

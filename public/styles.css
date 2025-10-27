@@ -75,3 +75,37 @@ body{margin:0;background:linear-gradient(180deg,#031029 0%, #071429 100%);color:
 .notif-item:hover {
   background: rgba(255,255,255,0.08);
 }
+/* === Notifications Section === */
+#notifs {
+  max-height: 400px;          /* limit visible height */
+  overflow-y: auto;           /* enable scrolling */
+  padding-right: 5px;
+  scrollbar-width: thin;      /* for Firefox */
+  scrollbar-color: #3b82f6 transparent;
+}
+
+#notifs::-webkit-scrollbar {
+  width: 6px;
+}
+
+#notifs::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 4px;
+}
+
+#clearAllBtn {
+  display: inline-block;
+  margin-top: 10px;
+  background: #b33;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+#clearAllBtn:hover {
+  background: #d44;
+}
+

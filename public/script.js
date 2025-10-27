@@ -45,7 +45,7 @@ function showToast(msg) {
 
 // === Play Sound ===
 function playSound() {
-  const audio = new Audio('/notify.mp3'); // put your notify.mp3 in /public folder
+  const audio = new Audio('/notify.mp3'); // place notify.mp3 inside /public
   audio.volume = 0.6;
   audio.play().catch(() => {});
 }
@@ -81,7 +81,6 @@ async function loadClients(q) {
 
   let active = 0, dueSoon = 0, overdue = 0;
   list.forEach(c => {
-    // auto status based on due date
     const isOverdue = c.dueDate < today;
     const status = isOverdue ? 'Inactive' : 'Active';
     if (status === 'Active') active++;
@@ -98,7 +97,7 @@ async function loadClients(q) {
       <td>${c.dueDate || ''}</td>
       <td style="color:${status === 'Active' ? '#4ade80' : '#f87171'};font-weight:600">${status}</td>
       <td>
-        <button class="btn payBtn" data-id="${c.id}" ${status === 'Inactive' ? '' : ''}>Paid</button>
+        <button class="btn payBtn" data-id="${c.id}">Paid</button>
         <button class="btn deleteBtn" data-id="${c.id}" style="background:#b33">Delete</button>
       </td>`;
     els.clientsTable.appendChild(tr);
@@ -127,10 +126,11 @@ async function loadClients(q) {
       showToast(res.message || 'Marked as paid');
       playSound();
       loadClients();
+      loadNotifications();
       setTimeout(() => {
         btn.disabled = false;
         btn.textContent = 'Paid';
-      }, 10000);
+      }, 10000); // 10s disable
     } catch (err) {
       console.error(err);
       showToast('Error processing payment');
@@ -174,7 +174,7 @@ els.runCheck.onclick = async () => {
   loadNotifications();
 };
 
-// === Notifications ===
+// === Notifications (with scroll + clear all) ===
 async function loadNotifications() {
   const notifs = await api('/api/notifications');
   els.notifs.innerHTML = notifs.length
@@ -184,6 +184,19 @@ async function loadNotifications() {
         <div class="small">${n.message}</div>
       </div>`).join('')
     : '<div class="small">No notifications yet.</div>';
+
+  if (notifs.length) {
+    const clearBtn = document.createElement('button');
+    clearBtn.id = 'clearAllBtn';
+    clearBtn.textContent = 'Clear All Notifications';
+    clearBtn.onclick = async () => {
+      if (!confirm('Clear all notifications?')) return;
+      await api('/api/notifications/clear', { method: 'DELETE' });
+      showToast('Notifications cleared');
+      loadNotifications();
+    };
+    els.notifs.appendChild(clearBtn);
+  }
 }
 
 // === Logout ===
