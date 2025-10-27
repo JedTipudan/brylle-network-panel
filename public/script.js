@@ -1,4 +1,5 @@
-// admin panel logic
+// === ADMIN PANEL LOGIC ===
+
 const api = (url, opts) => fetch(url, opts).then(async r => {
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
@@ -34,14 +35,14 @@ const els = {
   loadAllNotifs: document.getElementById('loadAllNotifs')
 };
 
-// Toast message display
+// === Toast Message Display ===
 function showToast(msg) {
   els.toast.textContent = msg;
   els.toast.style.display = 'block';
   setTimeout(() => els.toast.style.display = 'none', 3000);
 }
 
-// Switch between dashboard/clients/notifications
+// === Switch Between Views ===
 function switchView(v) {
   els.dashboardView.style.display = v === 'dashboard' ? '' : 'none';
   els.clientsView.style.display = v === 'clients' ? '' : 'none';
@@ -52,16 +53,19 @@ function switchView(v) {
   if (v === 'notifications') els.navNotifs.classList.add('active');
 }
 
-// View navigation
+// === View Navigation ===
 els.navDashboard.onclick = e => { e.preventDefault(); switchView('dashboard'); };
 els.navClients.onclick = e => { e.preventDefault(); switchView('clients'); loadClients(); };
 els.navNotifs.onclick = e => { e.preventDefault(); switchView('notifications'); loadNotifications(); };
 
-// Load all clients
+// === Load All Clients ===
 async function loadClients(q) {
   const clients = await api('/api/clients');
   let list = clients;
-  if (q) list = clients.filter(c => (c.name || '').toLowerCase().includes(q.toLowerCase()) || (c.phone || '').includes(q));
+  if (q) list = clients.filter(c =>
+    (c.name || '').toLowerCase().includes(q.toLowerCase()) ||
+    (c.phone || '').includes(q)
+  );
 
   els.clientsTable.innerHTML = '';
   const today = new Date().toISOString().slice(0, 10);
@@ -122,7 +126,7 @@ async function loadClients(q) {
   });
 }
 
-// Add new client
+// === Add New Client ===
 els.addBtn.onclick = async () => {
   const name = els.name.value.trim();
   const phone = els.phone.value.trim();
@@ -143,7 +147,7 @@ els.addBtn.onclick = async () => {
   loadClients();
 };
 
-// ✅ Run Check Now button (fixed)
+// === Run Check Now Button ===
 els.runCheck.onclick = async () => {
   showToast('Running due-date check...');
   try {
@@ -157,7 +161,7 @@ els.runCheck.onclick = async () => {
   }
 };
 
-// ✅ Load notifications (added)
+// === Load Notifications ===
 async function loadNotifications() {
   const notifs = await api('/api/notifications');
   els.notifs.innerHTML = notifs.length
@@ -170,16 +174,58 @@ async function loadNotifications() {
     : '<div class="small">No notifications yet.</div>';
 }
 
-// Logout
+// === Logout ===
 els.navLogout.onclick = async e => {
   e.preventDefault();
   await fetch('/logout', { method: 'POST' });
   location.href = '/login.html';
 };
 
-// Search clients
+// === Search Clients ===
 els.search.oninput = () => loadClients(els.search.value.trim());
 
-// Initial load
+// === Browser Notifications for Due Dates ===
+if (Notification && Notification.permission !== "granted") {
+  Notification.requestPermission();
+}
+
+function showBrowserNotification(title, body) {
+  if (Notification.permission === "granted") {
+    new Notification(title, { body, icon: "logo.svg" });
+  }
+}
+
+async function checkDueNotifications() {
+  try {
+    const clients = await api('/api/clients');
+    const now = new Date();
+    const soon = new Date();
+    soon.setDate(now.getDate() + 5);
+
+    clients.forEach(c => {
+      if (!c.dueDate || c.status === "Paid") return;
+      const due = new Date(c.dueDate);
+      const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 5) {
+        showBrowserNotification("Upcoming Due Date", `${c.name} is due in 5 days (${c.dueDate})`);
+      }
+      if (diffDays === 0) {
+        showBrowserNotification("Due Today", `${c.name} is due today! (${c.dueDate})`);
+      }
+      if (diffDays < 0) {
+        showBrowserNotification("Overdue Client", `${c.name} is overdue since ${c.dueDate}`);
+      }
+    });
+  } catch (err) {
+    console.error("Notification check failed:", err);
+  }
+}
+
+// Run notification check every 1 minute
+setInterval(checkDueNotifications, 60000);
+checkDueNotifications();
+
+// === Initial Load ===
 loadClients();
 switchView('dashboard');
