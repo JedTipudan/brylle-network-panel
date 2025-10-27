@@ -176,30 +176,41 @@ app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
 });
 
 // Run check now
+// Run check now
 async function runCheckNow() {
   const clients = await readClients();
   const today = formatDateISO(new Date());
+  let updated = false;
+
   for (const c of clients) {
     if (!c.dueDate) continue;
-    if (c.dueDate <= today && c.status !== 'Paid') {
-      const msg = `${c.name} is due ${c.dueDate === today ? 'today' : `on ${c.dueDate}`}`;
-      const notif = {
-        id: uuidv4(),
-        time: new Date().toISOString(),
-        clientId: c.id,
-        clientName: c.name,
-        dueDate: c.dueDate,
-        message: msg
-      };
-      await appendNotif(notif);
-      io.emit('notification', notif);
+
+    // if due date is reached or passed
+    if (c.dueDate <= today) {
+      // mark inactive if not paid
+      if (c.status !== 'Inactive') {
+        c.status = 'Inactive';
+        updated = true;
+        const msg = `${c.name} is now inactive (due ${c.dueDate}).`;
+
+        const notif = {
+          id: uuidv4(),
+          time: new Date().toISOString(),
+          clientId: c.id,
+          clientName: c.name,
+          dueDate: c.dueDate,
+          message: msg
+        };
+
+        await appendNotif(notif);
+        io.emit('notification', notif);
+      }
     }
   }
+
+  if (updated) await writeClients(clients);
 }
-app.post('/api/run-check-now', requireAuth, async (req, res) => {
-  await runCheckNow();
-  res.json({ ok: true, message: 'Check complete' });
-});
+
 
 // Auth
 app.post('/login', async (req, res) => {
