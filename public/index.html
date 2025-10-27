@@ -1,201 +1,143 @@
-// === ADMIN PANEL LOGIC ===
-const api = (url, opts) => fetch(url, opts).then(async r => {
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error || 'Request failed');
-  }
-  return r.json();
-});
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Brylle's Network & Data Solution</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Match Plan & Location select to input style */
+    select {
+      width: 100%;
+      background: transparent;
+      color: #e6eef8;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      cursor: pointer;
+    }
+    select:focus {
+      outline: none;
+      border-color: var(--accent1);
+      box-shadow: 0 0 5px rgba(14,165,233,0.4);
+    }
+    option {
+      background-color: #0d1b2a;
+      color: #e6eef8;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="logo.svg" alt="logo">
+        <div>Brylle's Network & Data Solution</div>
+      </div>
+      <nav class="nav">
+        <a href="#" class="active" id="nav-dashboard">Dashboard</a>
+        <a href="#" id="nav-clients">Clients</a>
+        <a href="#" id="nav-notifs">Notifications</a>
+        <a href="#" id="nav-logout" style="margin-top:14px;color:#ffb3b3">Logout</a>
+      </nav>
+      <div class="small" style="margin-top:14px">Secure Admin Panel</div>
+    </aside>
 
-const els = {
-  name: document.getElementById('name'),
-  phone: document.getElementById('phone'),
-  plan: document.getElementById('plan'),
-  location: document.getElementById('location'),
-  installDate: document.getElementById('installDate'),
-  billingCycle: document.getElementById('billingCycle'),
-  addBtn: document.getElementById('addBtn'),
-  runCheck: document.getElementById('runCheck'),
-  clientsTable: document.querySelector('#clientsTable tbody'),
-  totalBadge: document.getElementById('totalBadge'),
-  cardTotal: document.getElementById('cardTotal'),
-  cardActive: document.getElementById('cardActive'),
-  cardDueSoon: document.getElementById('cardDueSoon'),
-  cardOverdue: document.getElementById('cardOverdue'),
-  search: document.getElementById('search'),
-  navDashboard: document.getElementById('nav-dashboard'),
-  navClients: document.getElementById('nav-clients'),
-  navNotifs: document.getElementById('nav-notifs'),
-  dashboardView: document.getElementById('dashboardView'),
-  clientsView: document.getElementById('clientsView'),
-  notifsView: document.getElementById('notifsView'),
-  exportJson: document.getElementById('exportJson'),
-  navLogout: document.getElementById('nav-logout'),
-  toast: document.getElementById('toast'),
-  notifs: document.getElementById('notifs'),
-  loadAllNotifs: document.getElementById('loadAllNotifs')
-};
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <div class="small">Welcome, Admin</div>
+          <div style="font-weight:700">Brylle's Network & Data Solution</div>
+        </div>
+        <div class="small">Clients: <span id="totalBadge">0</span></div>
+      </div>
 
-// === Toast Message ===
-function showToast(msg) {
-  els.toast.textContent = msg;
-  els.toast.style.display = 'block';
-  setTimeout(() => (els.toast.style.display = 'none'), 3000);
-}
+      <!-- Dashboard -->
+      <div id="dashboardView">
+        <div class="cards">
+          <div class="card"><div class="small">Total</div><div class="huge" id="cardTotal">0</div></div>
+          <div class="card"><div class="small">Active</div><div class="huge" id="cardActive">0</div></div>
+          <div class="card"><div class="small">Due Soon</div><div class="huge" id="cardDueSoon">0</div></div>
+          <div class="card"><div class="small">Overdue</div><div class="huge" id="cardOverdue">0</div></div>
+        </div>
 
-// === Switch Views ===
-function switchView(v) {
-  els.dashboardView.style.display = v === 'dashboard' ? '' : 'none';
-  els.clientsView.style.display = v === 'clients' ? '' : 'none';
-  els.notifsView.style.display = v === 'notifications' ? '' : 'none';
-  document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active'));
-  if (v === 'dashboard') els.navDashboard.classList.add('active');
-  if (v === 'clients') els.navClients.classList.add('active');
-  if (v === 'notifications') els.navNotifs.classList.add('active');
-}
+        <div class="card">
+          <h3 style="margin-top:0">Quick Add</h3>
+          <div class="form-row">
+            <div style="flex:1" class="input"><label class="small">Full name</label><input id="name" type="text"></div>
+            <div style="width:180px" class="input"><label class="small">Due date</label><input id="dueDate" type="date"></div>
+          </div>
+          <div class="form-row" style="margin-top:10px">
+            <div style="flex:1" class="input"><label class="small">Phone</label><input id="phone" type="tel" placeholder="+639XXXXXXXXX"></div>
+            <div style="width:180px" class="input">
+              <label class="small">Plan</label>
+              <select id="plan">
+                <option value="999">₱999</option>
+                <option value="1299">₱1,299</option>
+                <option value="1500">₱1,500</option>
+                <option value="2000">₱2,000</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:10px">
+            <div style="flex:1" class="input">
+              <label class="small">Location</label>
+              <select id="location">
+                <option value="Manay">Manay</option>
+                <option value="Caraga">Caraga</option>
+                <option value="Del Pilar">Del Pilar</option>
+                <option value="Lambog">Lambog</option>
+                <option value="Guza">Guza</option>
+                <option value="San Isidro">San Isidro</option>
+              </select>
+            </div>
+            <div style="width:180px" class="input">
+              <label class="small">Installation Date</label>
+              <input id="installDate" type="date">
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:10px">
+            <button id="addBtn" class="btn">Add Client</button>
+            <button id="runCheck" class="btn">Run Check Now</button>
+          </div>
+        </div>
+      </div>
 
-// === Navigation ===
-els.navDashboard.onclick = e => { e.preventDefault(); switchView('dashboard'); };
-els.navClients.onclick = e => { e.preventDefault(); switchView('clients'); loadClients(); };
-els.navNotifs.onclick = e => { e.preventDefault(); switchView('notifications'); loadNotifications(); };
+      <!-- Clients -->
+      <div id="clientsView" style="display:none">
+        <div class="card">
+          <h3>Clients</h3>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input id="search" placeholder="Search name/phone" style="flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:#e6eef8">
+            <button id="exportJson" class="btn">Export</button>
+          </div>
+          <table class="table" id="clientsTable">
+            <thead><tr><th>Name</th><th>Phone</th><th>Plan</th><th>Location</th><th>Install</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
 
-// === Load Clients ===
-async function loadClients(q) {
-  const clients = await api('/api/clients');
-  let list = q ? clients.filter(c =>
-    (c.name || '').toLowerCase().includes(q.toLowerCase()) ||
-    (c.phone || '').includes(q)
-  ) : clients;
+      <!-- Notifications -->
+      <div id="notifsView" style="display:none">
+        <div class="card">
+          <h3>Notifications</h3>
+          <div id="notifs"><div class="small">No notifications yet.</div></div>
+          <div style="margin-top:8px"><button id="loadAllNotifs" class="btn">Load all</button></div>
+        </div>
+      </div>
 
-  els.clientsTable.innerHTML = '';
-  const today = new Date().toISOString().slice(0, 10);
-  const soon = new Date(); soon.setDate(soon.getDate() + 3);
-  const soonStr = soon.toISOString().slice(0, 10);
+      <div style="margin-top:14px" class="small">Made for Brylle's Network & Data Solution</div>
+    </main>
+  </div>
 
-  let active = 0, dueSoon = 0, overdue = 0;
-  list.forEach(c => {
-    if (c.status !== 'Paid') active++;
-    if (c.dueDate < today && c.status !== 'Paid') overdue++;
-    if (c.dueDate >= today && c.dueDate <= soonStr && c.status !== 'Paid') dueSoon++;
+  <div class="toast" id="toast"></div>
 
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${c.name}</td>
-      <td>${c.phone}</td>
-      <td>${c.plan}</td>
-      <td>${c.location || ''}</td>
-      <td>${c.installDate || ''}</td>
-      <td>${c.dueDate || ''}</td>
-      <td>${c.status}</td>
-      <td>
-        ${c.status !== 'Paid' ? `<button class="btn payBtn" data-id="${c.id}">Paid</button>` : ''}
-        <button class="btn deleteBtn" data-id="${c.id}" style="background:#b33">Delete</button>
-      </td>`;
-    els.clientsTable.appendChild(tr);
-  });
-
-  els.totalBadge.textContent = list.length;
-  els.cardTotal.textContent = list.length;
-  els.cardActive.textContent = active;
-  els.cardDueSoon.textContent = dueSoon;
-  els.cardOverdue.textContent = overdue;
-
-  document.querySelectorAll('.deleteBtn').forEach(btn => btn.onclick = async () => {
-    if (!confirm('Delete this client?')) return;
-    await api(`/api/clients/${btn.dataset.id}`, { method: 'DELETE' });
-    showToast('Client deleted');
-    loadClients(els.search.value.trim());
-  });
-
-  document.querySelectorAll('.payBtn').forEach(btn => btn.onclick = async () => {
-    await api(`/api/clients/${btn.dataset.id}/pay`, { method: 'POST' });
-    showToast('Marked as paid');
-    loadClients();
-  });
-}
-
-// === Add Client ===
-els.addBtn.onclick = async () => {
-  const name = els.name.value.trim();
-  const phone = els.phone.value.trim();
-  const plan = els.plan.value;
-  const location = els.location.value;
-  const installDate = els.installDate.value;
-  const billingCycle = parseInt(els.billingCycle.value, 10);
-
-  if (!name || !phone || !installDate) return showToast('Fill all required fields');
-
-  const dueDateObj = new Date(installDate);
-  dueDateObj.setDate(dueDateObj.getDate() + billingCycle);
-  const dueDate = dueDateObj.toISOString().split('T')[0];
-
-  await api('/api/clients', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, phone, plan, location, installDate, dueDate })
-  });
-
-  showToast('Client added');
-  els.name.value = els.phone.value = els.installDate.value = '';
-  loadClients();
-};
-
-// === Run Check ===
-els.runCheck.onclick = async () => {
-  showToast('Running due-date check...');
-  const res = await api('/api/run-check-now', { method: 'POST' });
-  showToast(res.message || 'Check completed!');
-  loadClients();
-  loadNotifications();
-};
-
-// === Notifications ===
-async function loadNotifications() {
-  const notifs = await api('/api/notifications');
-  els.notifs.innerHTML = notifs.length
-    ? notifs.map(n => `
-      <div class="notif-item">
-        <div><strong>${n.clientName}</strong> (${n.dueDate})</div>
-        <div class="small">${n.message}</div>
-      </div>`).join('')
-    : '<div class="small">No notifications yet.</div>';
-}
-
-// === Logout ===
-els.navLogout.onclick = async e => {
-  e.preventDefault();
-  await fetch('/logout', { method: 'POST' });
-  location.href = '/login.html';
-};
-
-// === Search ===
-els.search.oninput = () => loadClients(els.search.value.trim());
-
-// === Browser Notifications ===
-if (Notification && Notification.permission !== "granted") Notification.requestPermission();
-
-function showBrowserNotification(title, body) {
-  if (Notification.permission === "granted") new Notification(title, { body, icon: "logo.svg" });
-}
-
-async function checkDueNotifications() {
-  try {
-    const clients = await api('/api/clients');
-    const now = new Date();
-    clients.forEach(c => {
-      if (!c.dueDate || c.status === "Paid") return;
-      const due = new Date(c.dueDate);
-      const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 5) showBrowserNotification("Upcoming Due Date", `${c.name} is due in 5 days (${c.dueDate})`);
-      if (diffDays === 0) showBrowserNotification("Due Today", `${c.name} is due today! (${c.dueDate})`);
-      if (diffDays < 0) showBrowserNotification("Overdue Client", `${c.name} is overdue since ${c.dueDate}`);
-    });
-  } catch (err) { console.error("Notification check failed:", err); }
-}
-
-setInterval(checkDueNotifications, 60000);
-checkDueNotifications();
-
-loadClients();
-switchView('dashboard');
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

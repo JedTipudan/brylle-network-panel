@@ -13,7 +13,7 @@ const els = {
   plan: document.getElementById('plan'),
   location: document.getElementById('location'),
   installDate: document.getElementById('installDate'),
-  billingCycle: document.getElementById('billingCycle'),
+  dueDate: document.getElementById('dueDate'),
   addBtn: document.getElementById('addBtn'),
   runCheck: document.getElementById('runCheck'),
   clientsTable: document.querySelector('#clientsTable tbody'),
@@ -121,14 +121,10 @@ els.addBtn.onclick = async () => {
   const plan = els.plan.value;
   const location = els.location.value;
   const installDate = els.installDate.value;
-  const billingCycle = parseInt(els.billingCycle.value, 10);
+  const dueDate = els.dueDate.value;
 
-  if (!name || !phone || !installDate) return showToast('Fill all required fields');
-
-  // ✅ Automatically base due date on installation date
-  const dueDateObj = new Date(installDate);
-  dueDateObj.setDate(dueDateObj.getDate() + billingCycle);
-  const dueDate = dueDateObj.toISOString().split('T')[0];
+  if (!name || !phone || !installDate || !dueDate)
+    return showToast('Please fill all required fields.');
 
   await api('/api/clients', {
     method: 'POST',
@@ -137,8 +133,8 @@ els.addBtn.onclick = async () => {
   });
 
   showToast('Client added');
-  els.name.value = els.phone.value = els.installDate.value = '';
-  loadClients(); // refresh list immediately
+  els.name.value = els.phone.value = els.installDate.value = els.dueDate.value = '';
+  loadClients();
 };
 
 // === Run Check ===
@@ -196,10 +192,9 @@ async function checkDueNotifications() {
 }
 
 // === Auto Reload / Refresh ===
-setInterval(loadClients, 30000); // every 30 seconds refresh clients
-
+setInterval(loadClients, 30000);
 setInterval(checkDueNotifications, 60000);
 checkDueNotifications();
 
-loadClients(); // initial load
+loadClients();
 switchView('dashboard');
