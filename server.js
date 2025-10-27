@@ -164,16 +164,13 @@ app.post('/api/clients', requireAuth, async (req, res) => {
   res.json(newClient);
 });
 
-// When clicking "Paid" → auto-advance due date by +1 month
+// ✅ When clicking "Paid" → mark as paid only (no due date change)
 app.post('/api/clients/:id/pay', requireAuth, async (req, res) => {
   const id = req.params.id;
   const clients = await readClients();
   const idx = clients.findIndex(c => c.id === id);
   if (idx === -1) return res.status(404).json({ error: 'client not found' });
 
-  const oldDue = new Date(clients[idx].dueDate);
-  const newDue = new Date(oldDue.setMonth(oldDue.getMonth() + 1));
-  clients[idx].dueDate = formatDateISO(newDue);
   clients[idx].status = 'Paid';
   clients[idx].paidAt = new Date().toISOString();
   await writeClients(clients);
