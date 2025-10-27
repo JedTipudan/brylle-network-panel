@@ -163,8 +163,8 @@ app.delete('/api/clients/:id', requireAuth, async (req, res) => {
 });
 
 // Notifications
-
 app.get('/api/notifications', requireAuth, async (req, res) => res.json(await readNotifs()));
+
 // === Clear All Notifications ===
 app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
   try {
@@ -175,8 +175,7 @@ app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
   }
 });
 
-// Run check now
-// Run check now
+// === Run Check Now Function ===
 async function runCheckNow() {
   const clients = await readClients();
   const today = formatDateISO(new Date());
@@ -185,9 +184,7 @@ async function runCheckNow() {
   for (const c of clients) {
     if (!c.dueDate) continue;
 
-    // if due date is reached or passed
     if (c.dueDate <= today) {
-      // mark inactive if not paid
       if (c.status !== 'Inactive') {
         c.status = 'Inactive';
         updated = true;
@@ -211,6 +208,16 @@ async function runCheckNow() {
   if (updated) await writeClients(clients);
 }
 
+// === Manual Run Check Now Route ===
+app.post('/api/run-check-now', requireAuth, async (req, res) => {
+  try {
+    await runCheckNow();
+    res.json({ ok: true, message: 'Check completed!' });
+  } catch (err) {
+    console.error('Manual check error:', err);
+    res.status(500).json({ error: 'Manual check failed' });
+  }
+});
 
 // Auth
 app.post('/login', async (req, res) => {
@@ -237,6 +244,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
   io.on('connection', s => console.log('Socket connected:', s.id));
 
+  // Daily auto check (every 8 AM)
   cron.schedule('0 8 * * *', async () => {
     console.log('⏰ Daily Check Triggered');
     await runCheckNow();
