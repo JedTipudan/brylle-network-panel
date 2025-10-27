@@ -43,6 +43,13 @@ function showToast(msg) {
   setTimeout(() => (els.toast.style.display = 'none'), 3000);
 }
 
+// === Play Sound ===
+function playSound() {
+  const audio = new Audio('/notify.mp3'); // put your notify.mp3 in /public folder
+  audio.volume = 0.6;
+  audio.play().catch(() => {});
+}
+
 // === View Switch ===
 function switchView(v) {
   els.dashboardView.style.display = v === 'dashboard' ? '' : 'none';
@@ -74,9 +81,12 @@ async function loadClients(q) {
 
   let active = 0, dueSoon = 0, overdue = 0;
   list.forEach(c => {
-    if (c.status !== 'Paid') active++;
-    if (c.dueDate < today && c.status !== 'Paid') overdue++;
-    if (c.dueDate >= today && c.dueDate <= soonStr && c.status !== 'Paid') dueSoon++;
+    // auto status based on due date
+    const isOverdue = c.dueDate < today;
+    const status = isOverdue ? 'Inactive' : 'Active';
+    if (status === 'Active') active++;
+    if (isOverdue) overdue++;
+    if (c.dueDate >= today && c.dueDate <= soonStr && status === 'Active') dueSoon++;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -86,9 +96,9 @@ async function loadClients(q) {
       <td>${c.location || ''}</td>
       <td>${c.installDate || ''}</td>
       <td>${c.dueDate || ''}</td>
-      <td>${c.status}</td>
+      <td style="color:${status === 'Active' ? '#4ade80' : '#f87171'};font-weight:600">${status}</td>
       <td>
-        ${c.status !== 'Paid' ? `<button class="btn payBtn" data-id="${c.id}">Paid</button>` : ''}
+        <button class="btn payBtn" data-id="${c.id}" ${status === 'Inactive' ? '' : ''}>Paid</button>
         <button class="btn deleteBtn" data-id="${c.id}" style="background:#b33">Delete</button>
       </td>`;
     els.clientsTable.appendChild(tr);
@@ -100,6 +110,7 @@ async function loadClients(q) {
   els.cardDueSoon.textContent = dueSoon;
   els.cardOverdue.textContent = overdue;
 
+  // === Delete Button ===
   document.querySelectorAll('.deleteBtn').forEach(btn => btn.onclick = async () => {
     if (!confirm('Delete this client?')) return;
     await api(`/api/clients/${btn.dataset.id}`, { method: 'DELETE' });
@@ -107,10 +118,25 @@ async function loadClients(q) {
     loadClients(els.search.value.trim());
   });
 
+  // === Paid Button ===
   document.querySelectorAll('.payBtn').forEach(btn => btn.onclick = async () => {
-    await api(`/api/clients/${btn.dataset.id}/pay`, { method: 'POST' });
-    showToast('Marked as paid');
-    loadClients();
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    try {
+      const res = await api(`/api/clients/${btn.dataset.id}/pay`, { method: 'POST' });
+      showToast(res.message || 'Marked as paid');
+      playSound();
+      loadClients();
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Paid';
+      }, 10000);
+    } catch (err) {
+      console.error(err);
+      showToast('Error processing payment');
+      btn.disabled = false;
+      btn.textContent = 'Paid';
+    }
   });
 }
 
@@ -133,6 +159,7 @@ els.addBtn.onclick = async () => {
   });
 
   showToast('Client added');
+  playSound();
   els.name.value = els.phone.value = els.installDate.value = '';
   loadClients();
 };
@@ -142,6 +169,7 @@ els.runCheck.onclick = async () => {
   showToast('Running due-date check...');
   const res = await api('/api/run-check-now', { method: 'POST' });
   showToast(res.message || 'Check completed!');
+  playSound();
   loadClients();
   loadNotifications();
 };
@@ -180,13 +208,16 @@ async function checkDueNotifications() {
     const clients = await api('/api/clients');
     const now = new Date();
     clients.forEach(c => {
-      if (!c.dueDate || c.status === "Paid") return;
+      if (!c.dueDate) return;
       const due = new Date(c.dueDate);
       const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
 
       if (diffDays === 5) showBrowserNotification("Upcoming Due Date", `${c.name} is due in 5 days (${c.dueDate})`);
       if (diffDays === 0) showBrowserNotification("Due Today", `${c.name} is due today! (${c.dueDate})`);
-      if (diffDays < 0) showBrowserNotification("Overdue Client", `${c.name} is overdue since ${c.dueDate}`);
+      if (diffDays < 0) {
+        showBrowserNotification("Overdue Client", `${c.name} is overdue since ${c.dueDate}`);
+        playSound();
+      }
     });
   } catch (err) { console.error("Notification check failed:", err); }
 }
