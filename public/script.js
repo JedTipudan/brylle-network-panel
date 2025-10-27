@@ -45,7 +45,8 @@ function showToast(msg) {
 
 // === Play Sound ===
 function playSound() {
-  const audio = new Audio('/notify.mp3'); // place notify.mp3 inside /public
+  const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/233/233-preview.mp3");
+ // place notify.mp3 inside /public
   audio.volume = 0.6;
   audio.play().catch(() => {});
 }
