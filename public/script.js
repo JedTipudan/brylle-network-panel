@@ -34,12 +34,14 @@ const els = {
   loadAllNotifs: document.getElementById('loadAllNotifs')
 };
 
+// Toast message display
 function showToast(msg) {
   els.toast.textContent = msg;
   els.toast.style.display = 'block';
   setTimeout(() => els.toast.style.display = 'none', 3000);
 }
 
+// Switch between dashboard/clients/notifications
 function switchView(v) {
   els.dashboardView.style.display = v === 'dashboard' ? '' : 'none';
   els.clientsView.style.display = v === 'clients' ? '' : 'none';
@@ -50,19 +52,21 @@ function switchView(v) {
   if (v === 'notifications') els.navNotifs.classList.add('active');
 }
 
+// View navigation
 els.navDashboard.onclick = e => { e.preventDefault(); switchView('dashboard'); };
 els.navClients.onclick = e => { e.preventDefault(); switchView('clients'); loadClients(); };
-els.navNotifs.onclick = e => { e.preventDefault(); switchView('notifications'); };
+els.navNotifs.onclick = e => { e.preventDefault(); switchView('notifications'); loadNotifications(); };
 
+// Load all clients
 async function loadClients(q) {
   const clients = await api('/api/clients');
   let list = clients;
   if (q) list = clients.filter(c => (c.name || '').toLowerCase().includes(q.toLowerCase()) || (c.phone || '').includes(q));
 
   els.clientsTable.innerHTML = '';
-  const today = new Date().toISOString().slice(0,10);
-  const soon = new Date(); soon.setDate(soon.getDate()+3);
-  const soonStr = soon.toISOString().slice(0,10);
+  const today = new Date().toISOString().slice(0, 10);
+  const soon = new Date(); soon.setDate(soon.getDate() + 3);
+  const soonStr = soon.toISOString().slice(0, 10);
 
   let active = 0, dueSoon = 0, overdue = 0;
   list.forEach(c => {
@@ -92,6 +96,7 @@ async function loadClients(q) {
   els.cardDueSoon.textContent = dueSoon;
   els.cardOverdue.textContent = overdue;
 
+  // Delete client
   document.querySelectorAll('.deleteBtn').forEach(btn => btn.onclick = async e => {
     if (!confirm('Delete this client?')) return;
     const id = btn.dataset.id;
@@ -104,6 +109,7 @@ async function loadClients(q) {
     }
   });
 
+  // Mark client as paid
   document.querySelectorAll('.payBtn').forEach(btn => btn.onclick = async e => {
     const id = btn.dataset.id;
     try {
@@ -116,6 +122,7 @@ async function loadClients(q) {
   });
 }
 
+// Add new client
 els.addBtn.onclick = async () => {
   const name = els.name.value.trim();
   const phone = els.phone.value.trim();
@@ -136,17 +143,43 @@ els.addBtn.onclick = async () => {
   loadClients();
 };
 
+// ✅ Run Check Now button (fixed)
 els.runCheck.onclick = async () => {
-  await api('/api/run-check-now', { method: 'POST' });
-  showToast('Check executed');
+  showToast('Running due-date check...');
+  try {
+    const res = await api('/api/run-check-now', { method: 'POST' });
+    showToast(res.message || 'Check completed!');
+    await loadClients();
+    await loadNotifications();
+  } catch (err) {
+    console.error(err);
+    showToast('Error running check.');
+  }
 };
 
+// ✅ Load notifications (added)
+async function loadNotifications() {
+  const notifs = await api('/api/notifications');
+  els.notifs.innerHTML = notifs.length
+    ? notifs.map(n => `
+        <div class="notif-item">
+          <div><strong>${n.clientName}</strong> (${n.dueDate})</div>
+          <div class="small">${n.message}</div>
+        </div>
+      `).join('')
+    : '<div class="small">No notifications yet.</div>';
+}
+
+// Logout
 els.navLogout.onclick = async e => {
   e.preventDefault();
   await fetch('/logout', { method: 'POST' });
   location.href = '/login.html';
 };
 
+// Search clients
 els.search.oninput = () => loadClients(els.search.value.trim());
+
+// Initial load
 loadClients();
 switchView('dashboard');
