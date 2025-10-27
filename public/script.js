@@ -1,5 +1,4 @@
 // === ADMIN PANEL LOGIC ===
-
 const api = (url, opts) => fetch(url, opts).then(async r => {
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
@@ -12,7 +11,8 @@ const els = {
   name: document.getElementById('name'),
   phone: document.getElementById('phone'),
   plan: document.getElementById('plan'),
-  dueDate: document.getElementById('dueDate'),
+  location: document.getElementById('location'),
+  installDate: document.getElementById('installDate'),
   addBtn: document.getElementById('addBtn'),
   runCheck: document.getElementById('runCheck'),
   clientsTable: document.querySelector('#clientsTable tbody'),
@@ -35,14 +35,14 @@ const els = {
   loadAllNotifs: document.getElementById('loadAllNotifs')
 };
 
-// === Toast Message Display ===
+// === Toast Message ===
 function showToast(msg) {
   els.toast.textContent = msg;
   els.toast.style.display = 'block';
-  setTimeout(() => els.toast.style.display = 'none', 3000);
+  setTimeout(() => (els.toast.style.display = 'none'), 3000);
 }
 
-// === Switch Between Views ===
+// === Switch Views ===
 function switchView(v) {
   els.dashboardView.style.display = v === 'dashboard' ? '' : 'none';
   els.clientsView.style.display = v === 'clients' ? '' : 'none';
@@ -53,19 +53,18 @@ function switchView(v) {
   if (v === 'notifications') els.navNotifs.classList.add('active');
 }
 
-// === View Navigation ===
+// === Navigation ===
 els.navDashboard.onclick = e => { e.preventDefault(); switchView('dashboard'); };
 els.navClients.onclick = e => { e.preventDefault(); switchView('clients'); loadClients(); };
 els.navNotifs.onclick = e => { e.preventDefault(); switchView('notifications'); loadNotifications(); };
 
-// === Load All Clients ===
+// === Load Clients ===
 async function loadClients(q) {
   const clients = await api('/api/clients');
-  let list = clients;
-  if (q) list = clients.filter(c =>
+  let list = q ? clients.filter(c =>
     (c.name || '').toLowerCase().includes(q.toLowerCase()) ||
     (c.phone || '').includes(q)
-  );
+  ) : clients;
 
   els.clientsTable.innerHTML = '';
   const today = new Date().toISOString().slice(0, 10);
@@ -100,77 +99,62 @@ async function loadClients(q) {
   els.cardDueSoon.textContent = dueSoon;
   els.cardOverdue.textContent = overdue;
 
-  // Delete client
-  document.querySelectorAll('.deleteBtn').forEach(btn => btn.onclick = async e => {
+  document.querySelectorAll('.deleteBtn').forEach(btn => btn.onclick = async () => {
     if (!confirm('Delete this client?')) return;
-    const id = btn.dataset.id;
-    try {
-      await api(`/api/clients/${id}`, { method: 'DELETE' });
-      showToast('Client deleted');
-      loadClients(els.search.value.trim());
-    } catch (err) {
-      showToast(err.message);
-    }
+    await api(`/api/clients/${btn.dataset.id}`, { method: 'DELETE' });
+    showToast('Client deleted');
+    loadClients(els.search.value.trim());
   });
 
-  // Mark client as paid
-  document.querySelectorAll('.payBtn').forEach(btn => btn.onclick = async e => {
-    const id = btn.dataset.id;
-    try {
-      await api(`/api/clients/${id}/pay`, { method: 'POST' });
-      showToast('Marked as paid');
-      loadClients();
-    } catch (err) {
-      showToast(err.message);
-    }
+  document.querySelectorAll('.payBtn').forEach(btn => btn.onclick = async () => {
+    await api(`/api/clients/${btn.dataset.id}/pay`, { method: 'POST' });
+    showToast('Marked as paid');
+    loadClients();
   });
 }
 
-// === Add New Client ===
+// === Add Client ===
 els.addBtn.onclick = async () => {
   const name = els.name.value.trim();
   const phone = els.phone.value.trim();
   const plan = els.plan.value;
-  const dueDate = els.dueDate.value;
-  const location = document.getElementById('location').value.trim();
-  const installDate = document.getElementById('installDate').value.trim();
+  const location = els.location.value;
+  const installDate = els.installDate.value;
 
-  if (!name || !phone || !dueDate) return showToast('Fill all required fields');
+  if (!name || !phone || !installDate) return showToast('Fill all required fields');
+
+  // Set dueDate same as installDate
+  const dueDate = installDate;
 
   await api('/api/clients', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, phone, plan, dueDate, location, installDate })
+    body: JSON.stringify({ name, phone, plan, location, installDate, dueDate })
   });
+
   showToast('Client added');
-  els.name.value = els.phone.value = els.location = els.dueDate.value = '';
+  els.name.value = els.phone.value = els.installDate.value = '';
   loadClients();
 };
 
-// === Run Check Now Button ===
+// === Run Check ===
 els.runCheck.onclick = async () => {
   showToast('Running due-date check...');
-  try {
-    const res = await api('/api/run-check-now', { method: 'POST' });
-    showToast(res.message || 'Check completed!');
-    await loadClients();
-    await loadNotifications();
-  } catch (err) {
-    console.error(err);
-    showToast('Error running check.');
-  }
+  const res = await api('/api/run-check-now', { method: 'POST' });
+  showToast(res.message || 'Check completed!');
+  loadClients();
+  loadNotifications();
 };
 
-// === Load Notifications ===
+// === Notifications ===
 async function loadNotifications() {
   const notifs = await api('/api/notifications');
   els.notifs.innerHTML = notifs.length
     ? notifs.map(n => `
-        <div class="notif-item">
-          <div><strong>${n.clientName}</strong> (${n.dueDate})</div>
-          <div class="small">${n.message}</div>
-        </div>
-      `).join('')
+      <div class="notif-item">
+        <div><strong>${n.clientName}</strong> (${n.dueDate})</div>
+        <div class="small">${n.message}</div>
+      </div>`).join('')
     : '<div class="small">No notifications yet.</div>';
 }
 
@@ -181,51 +165,34 @@ els.navLogout.onclick = async e => {
   location.href = '/login.html';
 };
 
-// === Search Clients ===
+// === Search ===
 els.search.oninput = () => loadClients(els.search.value.trim());
 
-// === Browser Notifications for Due Dates ===
-if (Notification && Notification.permission !== "granted") {
-  Notification.requestPermission();
-}
+// === Browser Notifications ===
+if (Notification && Notification.permission !== "granted") Notification.requestPermission();
 
 function showBrowserNotification(title, body) {
-  if (Notification.permission === "granted") {
-    new Notification(title, { body, icon: "logo.svg" });
-  }
+  if (Notification.permission === "granted") new Notification(title, { body, icon: "logo.svg" });
 }
 
 async function checkDueNotifications() {
   try {
     const clients = await api('/api/clients');
     const now = new Date();
-    const soon = new Date();
-    soon.setDate(now.getDate() + 5);
-
     clients.forEach(c => {
       if (!c.dueDate || c.status === "Paid") return;
       const due = new Date(c.dueDate);
       const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
 
-      if (diffDays === 5) {
-        showBrowserNotification("Upcoming Due Date", `${c.name} is due in 5 days (${c.dueDate})`);
-      }
-      if (diffDays === 0) {
-        showBrowserNotification("Due Today", `${c.name} is due today! (${c.dueDate})`);
-      }
-      if (diffDays < 0) {
-        showBrowserNotification("Overdue Client", `${c.name} is overdue since ${c.dueDate}`);
-      }
+      if (diffDays === 5) showBrowserNotification("Upcoming Due Date", `${c.name} is due in 5 days (${c.dueDate})`);
+      if (diffDays === 0) showBrowserNotification("Due Today", `${c.name} is due today! (${c.dueDate})`);
+      if (diffDays < 0) showBrowserNotification("Overdue Client", `${c.name} is overdue since ${c.dueDate}`);
     });
-  } catch (err) {
-    console.error("Notification check failed:", err);
-  }
+  } catch (err) { console.error("Notification check failed:", err); }
 }
 
-// Run notification check every 1 minute
 setInterval(checkDueNotifications, 60000);
 checkDueNotifications();
 
-// === Initial Load ===
 loadClients();
 switchView('dashboard');
