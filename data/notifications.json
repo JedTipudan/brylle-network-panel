@@ -1,0 +1,26 @@
+[
+  {
+    "id": "746faea7-a9d4-4109-91cb-0acb10f51b2b",
+    "time": "2025-10-27T10:08:52.540Z",
+    "clientId": "7ede15c0-1b8d-4561-b8e5-c2e011236782",
+    "clientName": "Jed Tipudan",
+    "dueDate": "2025-10-27",
+    "message": "Hi Jed Tipudan, your payment for Brylle's Network & Data Solution is due today. Please settle to avoid interruption. Thank you!",
+    "sms": {
+      "success": true,
+      "method": "simulated"
+    }
+  },
+  {
+    "id": "0059f967-b579-49b5-a235-5145dd1161d9",
+    "time": "2025-10-27T09:55:28.867Z",
+    "clientId": "7ede15c0-1b8d-4561-b8e5-c2e011236782",
+    "clientName": "Jed Tipudan",
+    "dueDate": "2025-10-27",
+    "message": "Hi Jed Tipudan, your payment for Brylle's Network & Data Solution is due today. Please settle to avoid interruption. Thank you!",
+    "sms": {
+      "success": true,
+      "method": "simulated"
+    }
+  }
+]
