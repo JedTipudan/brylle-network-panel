@@ -28,6 +28,30 @@
       background-color: #0d1b2a;
       color: #e6eef8;
     }
+
+    /* 🔔 Popup Notification Style */
+    .notif-popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #0d1b2a;
+      color: #fff;
+      border-left: 5px solid #0ea5e9;
+      padding: 14px 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.4s, transform 0.4s;
+      z-index: 9999;
+      font-size: 14px;
+      max-width: 280px;
+      line-height: 1.4;
+    }
+    .notif-popup.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -104,8 +128,12 @@
               <input id="installDate" type="date">
             </div>
             <div style="width:180px" class="input">
-              <label class="small">Billing Cycle (days)</label>
-              <input id="billingCycle" type="number" value="30" min="1">
+              <label class="small">Billing Cycle</label>
+              <select id="billingCycle">
+                <option value="15">15 days</option>
+                <option value="30" selected>30 days</option>
+                <option value="60">60 days</option>
+              </select>
             </div>
           </div>
           <div style="margin-top:12px;display:flex;gap:10px">
@@ -145,7 +173,42 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- 🔌 Socket.IO + Notification Script -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
+  <script>
+    const socket = io();
+
+    // Notification sound setup 🎵
+    const notifSound = new Audio("https://assets.mixkit.co/active_storage/sfx/233/233-preview.mp3");
+
+    socket.on('notification', notif => {
+      console.log('📩 Notification received:', notif);
+
+      // Play sound
+      notifSound.currentTime = 0;
+      notifSound.play().catch(() => {
+        console.warn("🔇 Autoplay blocked, user interaction needed.");
+      });
+
+      // Create popup
+      const popup = document.createElement('div');
+      popup.classList.add('notif-popup');
+      popup.innerHTML = `
+        <strong>🔔 ${notif.clientName}</strong><br>
+        ${notif.message}
+      `;
+      document.body.appendChild(popup);
+
+      // show animation
+      setTimeout(() => popup.classList.add('show'), 50);
+
+      // remove after 6 seconds
+      setTimeout(() => {
+        popup.classList.remove('show');
+        setTimeout(() => popup.remove(), 400);
+      }, 6000);
+    });
+  </script>
 </body>
 </html>

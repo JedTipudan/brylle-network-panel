@@ -126,15 +126,10 @@ els.addBtn.onclick = async () => {
   if (!name || !phone || !installDate)
     return showToast('Please fill all required fields.');
 
-  // 🧮 Compute due date automatically
-  const dueDateObj = new Date(installDate);
-  dueDateObj.setDate(dueDateObj.getDate() + billingCycle);
-  const dueDate = dueDateObj.toISOString().split('T')[0];
-
   await api('/api/clients', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, phone, plan, location, installDate, dueDate, billingCycle })
+    body: JSON.stringify({ name, phone, plan, location, installDate, billingCycle })
   });
 
   showToast('Client added');
