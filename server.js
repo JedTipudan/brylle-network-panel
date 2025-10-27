@@ -1,11 +1,6 @@
 /**
  * Pro Secure server.js - Brylle's Network & Data Solution
- * - Admin login (simple, local config.json)
- * - Session via express-session (cookie)
- * - Local JSON data storage
- * - Socket.IO notifications & cron checks
  */
-
 const express = require('express');
 const session = require('express-session');
 const fs = require('fs').promises;
@@ -131,7 +126,7 @@ app.get('/', (req, res) => {
   }
 });
 
-// Dashboard (protected)
+// Dashboard
 app.get('/dashboard', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -142,7 +137,7 @@ app.get('/api/clients', requireAuth, async (req, res) => {
 });
 
 app.post('/api/clients', requireAuth, async (req, res) => {
-  const { name, phone, plan, dueDate } = req.body;
+  const { name, phone, plan, dueDate, location, installDate } = req.body;
   if (!name || !phone || !dueDate)
     return res.status(400).json({ error: 'name, phone and dueDate required' });
   const clients = await readClients();
@@ -152,6 +147,8 @@ app.post('/api/clients', requireAuth, async (req, res) => {
     phone: phone.trim(),
     plan: (plan || '').trim(),
     dueDate: dueDate.trim(),
+    location: (location || '').trim(),
+    installDate: (installDate || '').trim(),
     status: 'Active',
     createdAt: new Date().toISOString()
   };
@@ -160,11 +157,16 @@ app.post('/api/clients', requireAuth, async (req, res) => {
   res.json(newClient);
 });
 
+// When clicking "Paid" → auto-advance due date by +1 month
 app.post('/api/clients/:id/pay', requireAuth, async (req, res) => {
   const id = req.params.id;
   const clients = await readClients();
   const idx = clients.findIndex(c => c.id === id);
   if (idx === -1) return res.status(404).json({ error: 'client not found' });
+
+  const oldDue = new Date(clients[idx].dueDate);
+  const newDue = new Date(oldDue.setMonth(oldDue.getMonth() + 1));
+  clients[idx].dueDate = formatDateISO(newDue);
   clients[idx].status = 'Paid';
   clients[idx].paidAt = new Date().toISOString();
   await writeClients(clients);
@@ -181,7 +183,7 @@ app.delete('/api/clients/:id', requireAuth, async (req, res) => {
   res.json({ ok: true, removed });
 });
 
-// API: Notifications
+// Notifications
 app.get('/api/notifications', requireAuth, async (req, res) => {
   res.json(await readNotifs());
 });
@@ -200,7 +202,6 @@ app.post('/login', async (req, res) => {
   const cfg = await readConfig();
   const admin = cfg.admin || { username: 'admin', password: 'admin' };
   const { username, password } = req.body;
-
   if (username === admin.username && password === admin.password) {
     req.session.user = 'admin';
     return res.json({ ok: true });
@@ -214,7 +215,7 @@ app.post('/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// ===== STATIC FILES (after routes) =====
+// ===== STATIC FILES =====
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ===== START SERVER =====
@@ -223,9 +224,7 @@ app.use(express.static(path.join(__dirname, 'public')));
   const port = process.env.PORT || 3000;
   server.listen(port, () => console.log(`✅ Server running at http://localhost:${port}`));
 
-  io.on('connection', socket => {
-    console.log('Socket connected:', socket.id);
-  });
+  io.on('connection', socket => console.log('Socket connected:', socket.id));
 
   cron.schedule('0 8 * * *', async () => {
     try {

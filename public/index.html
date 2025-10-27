@@ -1,6 +1,11 @@
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>Brylle's Network & Data Solution</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="styles.css"></head>
+<head>
+<meta charset="utf-8">
+<title>Brylle's Network & Data Solution</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="styles.css">
+</head>
 <body>
   <div class="app">
     <aside class="sidebar">
@@ -11,20 +16,19 @@
         <a href="#" id="nav-notifs">Notifications</a>
         <a href="#" id="nav-logout" style="margin-top:14px;color:#ffb3b3">Logout</a>
       </nav>
-      <div class="small" style="margin-top:14px">Secure Admin Panel (local auth)</div>
+      <div class="small" style="margin-top:14px">Secure Admin Panel</div>
     </aside>
+
     <main class="main">
       <div class="topbar">
-        <div>
-          <div class="small">Welcome, Admin</div>
-          <div style="font-weight:700">Brylle's Network & Data Solution</div>
-        </div>
+        <div><div class="small">Welcome, Admin</div><div style="font-weight:700">Brylle's Network & Data Solution</div></div>
         <div class="small">Clients: <span id="totalBadge">0</span></div>
       </div>
 
+      <!-- Dashboard -->
       <div id="dashboardView">
         <div class="cards">
-          <div class="card"><div class="small">Total Clients</div><div class="huge" id="cardTotal">0</div></div>
+          <div class="card"><div class="small">Total</div><div class="huge" id="cardTotal">0</div></div>
           <div class="card"><div class="small">Active</div><div class="huge" id="cardActive">0</div></div>
           <div class="card"><div class="small">Due Soon</div><div class="huge" id="cardDueSoon">0</div></div>
           <div class="card"><div class="small">Overdue</div><div class="huge" id="cardOverdue">0</div></div>
@@ -33,12 +37,24 @@
         <div class="card">
           <h3 style="margin-top:0">Quick Add</h3>
           <div class="form-row">
-            <div style="flex:1" class="input"><label class="small">Full name</label><input id="name" type="text" placeholder="e.g. Juan dela Cruz"></div>
+            <div style="flex:1" class="input"><label class="small">Full name</label><input id="name" type="text"></div>
             <div style="width:180px" class="input"><label class="small">Due date</label><input id="dueDate" type="date"></div>
           </div>
           <div class="form-row" style="margin-top:10px">
             <div style="flex:1" class="input"><label class="small">Phone</label><input id="phone" type="tel" placeholder="+639XXXXXXXXX"></div>
-            <div style="width:180px" class="input"><label class="small">Plan</label><input id="plan" type="text" placeholder="Plan name"></div>
+            <div style="width:180px" class="input">
+              <label class="small">Plan</label>
+              <select id="plan">
+                <option value="999">₱999</option>
+                <option value="1299">₱1,299</option>
+                <option value="1500">₱1,500</option>
+                <option value="2000">₱2,000</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row" style="margin-top:10px">
+            <div style="flex:1" class="input"><label class="small">Location</label><input id="location" type="text" placeholder="e.g. Brgy. Malinta"></div>
+            <div style="width:180px" class="input"><label class="small">Installation Date</label><input id="installDate" type="date"></div>
           </div>
           <div style="margin-top:12px;display:flex;gap:10px">
             <button id="addBtn" class="btn">Add Client</button>
@@ -47,20 +63,27 @@
         </div>
       </div>
 
+      <!-- Clients View -->
       <div id="clientsView" style="display:none">
         <div class="card">
-          <h3 style="margin-top:0">Clients</h3>
-          <div style="display:flex;gap:8px;margin-bottom:8px"><input id="search" placeholder="Search by name or phone" style="flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:#e6eef8"><button id="exportJson" class="btn">Export</button></div>
-          <div id="summary" class="small" style="margin-bottom:8px">Loading...</div>
-          <table class="table" id="clientsTable"><thead><tr><th>Name</th><th>Phone</th><th>Plan</th><th>Due</th><th>Status</th><th>Action</th></tr></thead><tbody></tbody></table>
+          <h3>Clients</h3>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input id="search" placeholder="Search name/phone" style="flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:#e6eef8">
+            <button id="exportJson" class="btn">Export</button>
+          </div>
+          <table class="table" id="clientsTable">
+            <thead><tr><th>Name</th><th>Phone</th><th>Plan</th><th>Location</th><th>Install</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
 
+      <!-- Notifications -->
       <div id="notifsView" style="display:none">
         <div class="card">
-          <h3 style="margin-top:0">Notifications</h3>
+          <h3>Notifications</h3>
           <div id="notifs"><div class="small">No notifications yet.</div></div>
-          <div style="margin-top:8px"><button id="loadAllNotifs" class="btn">Load all notifications</button></div>
+          <div style="margin-top:8px"><button id="loadAllNotifs" class="btn">Load all</button></div>
         </div>
       </div>
 
@@ -72,4 +95,5 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="script.js"></script>
-</body></html>
+</body>
+</html>
