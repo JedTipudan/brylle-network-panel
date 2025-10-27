@@ -13,7 +13,7 @@ const els = {
   plan: document.getElementById('plan'),
   location: document.getElementById('location'),
   installDate: document.getElementById('installDate'),
-  dueDate: document.getElementById('dueDate'),
+  billingCycle: document.getElementById('billingCycle'),
   addBtn: document.getElementById('addBtn'),
   runCheck: document.getElementById('runCheck'),
   clientsTable: document.querySelector('#clientsTable tbody'),
@@ -36,14 +36,14 @@ const els = {
   loadAllNotifs: document.getElementById('loadAllNotifs')
 };
 
-// === Toast Message ===
+// === Toast ===
 function showToast(msg) {
   els.toast.textContent = msg;
   els.toast.style.display = 'block';
   setTimeout(() => (els.toast.style.display = 'none'), 3000);
 }
 
-// === Switch Views ===
+// === View Switch ===
 function switchView(v) {
   els.dashboardView.style.display = v === 'dashboard' ? '' : 'none';
   els.clientsView.style.display = v === 'clients' ? '' : 'none';
@@ -121,19 +121,24 @@ els.addBtn.onclick = async () => {
   const plan = els.plan.value;
   const location = els.location.value;
   const installDate = els.installDate.value;
-  const dueDate = els.dueDate.value;
+  const billingCycle = parseInt(els.billingCycle.value, 10) || 30;
 
-  if (!name || !phone || !installDate || !dueDate)
+  if (!name || !phone || !installDate)
     return showToast('Please fill all required fields.');
+
+  // 🧮 Compute due date automatically
+  const dueDateObj = new Date(installDate);
+  dueDateObj.setDate(dueDateObj.getDate() + billingCycle);
+  const dueDate = dueDateObj.toISOString().split('T')[0];
 
   await api('/api/clients', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, phone, plan, location, installDate, dueDate })
+    body: JSON.stringify({ name, phone, plan, location, installDate, dueDate, billingCycle })
   });
 
   showToast('Client added');
-  els.name.value = els.phone.value = els.installDate.value = els.dueDate.value = '';
+  els.name.value = els.phone.value = els.installDate.value = '';
   loadClients();
 };
 
@@ -191,7 +196,7 @@ async function checkDueNotifications() {
   } catch (err) { console.error("Notification check failed:", err); }
 }
 
-// === Auto Reload / Refresh ===
+// === Auto Refresh ===
 setInterval(loadClients, 30000);
 setInterval(checkDueNotifications, 60000);
 checkDueNotifications();

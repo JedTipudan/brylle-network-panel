@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="styles.css">
   <style>
-    /* Match Plan & Location select to input style */
     select {
       width: 100%;
       background: transparent;
@@ -68,11 +67,16 @@
         <div class="card">
           <h3 style="margin-top:0">Quick Add</h3>
           <div class="form-row">
-            <div style="flex:1" class="input"><label class="small">Full name</label><input id="name" type="text"></div>
-            <div style="width:180px" class="input"><label class="small">Due date</label><input id="dueDate" type="date"></div>
+            <div style="flex:1" class="input">
+              <label class="small">Full name</label>
+              <input id="name" type="text">
+            </div>
           </div>
           <div class="form-row" style="margin-top:10px">
-            <div style="flex:1" class="input"><label class="small">Phone</label><input id="phone" type="tel" placeholder="+639XXXXXXXXX"></div>
+            <div style="flex:1" class="input">
+              <label class="small">Phone</label>
+              <input id="phone" type="tel" placeholder="+639XXXXXXXXX">
+            </div>
             <div style="width:180px" class="input">
               <label class="small">Plan</label>
               <select id="plan">
@@ -98,6 +102,10 @@
             <div style="width:180px" class="input">
               <label class="small">Installation Date</label>
               <input id="installDate" type="date">
+            </div>
+            <div style="width:180px" class="input">
+              <label class="small">Billing Cycle (days)</label>
+              <input id="billingCycle" type="number" value="30" min="1">
             </div>
           </div>
           <div style="margin-top:12px;display:flex;gap:10px">
