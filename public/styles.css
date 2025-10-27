@@ -1,42 +1,215 @@
-/* Dark pro theme */
-:root{
-  --bg:#071029;
-  --card:#0f1724;
-  --muted:#9aa7bf;
-  --accent1:#0ea5e9;
-  --accent2:#7c3aed;
-  --accent3:#06b6d4;
-  --radius:12px;
-  --maxw:1200px;
+/* === Dark Pro Theme (with Mobile Sidebar Toggle) === */
+:root {
+  --bg: #071029;
+  --card: #0f1724;
+  --muted: #9aa7bf;
+  --accent1: #0ea5e9;
+  --accent2: #7c3aed;
+  --accent3: #06b6d4;
+  --radius: 12px;
+  --maxw: 1200px;
   font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
 }
-*{box-sizing:border-box}
-body{margin:0;background:linear-gradient(180deg,#031029 0%, #071429 100%);color:#e6eef8}
-.app{display:flex;min-height:100vh}
-.sidebar{width:260px;padding:20px;background:linear-gradient(180deg,#071b2b,#091a2e);box-shadow: 0 6px 30px rgba(0,0,0,0.5)}
-.logo{display:flex;align-items:center;gap:12px;font-weight:700;color:var(--accent1);margin-bottom:14px}
-.logo img{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,var(--accent2),var(--accent3));padding:8px}
-.nav a{display:block;padding:10px;border-radius:10px;color:var(--muted);text-decoration:none;margin-bottom:8px;transition:all 0.2s}
-.nav a:hover{background:rgba(255,255,255,0.05);color:var(--accent1)}
-.nav a.active{background:rgba(255,255,255,0.08);color:var(--accent1);font-weight:600}
-.main{flex:1;padding:24px}
-.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
-.card{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));padding:14px;border-radius:12px;box-shadow: 0 8px 30px rgba(2,6,23,0.6)}
-.huge{font-size:1.6rem;font-weight:700;color:#fff}
-.small{font-size:0.9rem;color:var(--muted)}
-.form-row{display:flex;gap:10px}
-.input input{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#e6eef8;width:100%}
-.input input:focus{outline:none;border-color:var(--accent1);box-shadow:0 0 5px rgba(14,165,233,0.4)}
-.btn{background:linear-gradient(90deg,var(--accent1),var(--accent3));color:#04202b;border:none;padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:600;transition:all 0.2s}
-.btn:hover{opacity:0.9;transform:scale(1.03)}
-.table{width:100%;border-collapse:collapse;margin-top:10px}
-.table th,.table td{padding:10px;border-bottom:1px solid rgba(255,255,255,0.05);text-align:left}
-.table tr:hover{background:rgba(255,255,255,0.02)}
-.toast{position:fixed;right:20px;bottom:20px;background:linear-gradient(90deg,var(--accent1),var(--accent3));padding:12px 16px;border-radius:8px;color:#041528;box-shadow:0 10px 30px rgba(2,6,23,0.6);display:none}
-.delete-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#ff7b7b;padding:6px 8px;border-radius:8px;cursor:pointer}
-.delete-btn:hover{background:rgba(255,0,0,0.1)}
-@media(max-width:1000px){.cards{grid-template-columns:repeat(1,1fr)}.sidebar{display:none}}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #031029 0%, #071429 100%);
+  color: #e6eef8;
+}
+
+.app {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* === Sidebar === */
+.sidebar {
+  width: 260px;
+  padding: 20px;
+  background: linear-gradient(180deg, #071b2b, #091a2e);
+  box-shadow: 0 6px 30px rgba(0,0,0,0.5);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 999;
+}
+
+.sidebar.hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  color: var(--accent1);
+  margin-bottom: 14px;
+}
+
+.logo img {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent3));
+  padding: 8px;
+}
+
+.nav a {
+  display: block;
+  padding: 10px;
+  border-radius: 10px;
+  color: var(--muted);
+  text-decoration: none;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.nav a:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--accent1);
+}
+
+.nav a.active {
+  background: rgba(255,255,255,0.08);
+  color: var(--accent1);
+  font-weight: 600;
+}
+
+/* === Main Content === */
+.main {
+  flex: 1;
+  padding: 24px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* === Toggle Button for Mobile === */
+.menu-toggle {
+  display: none;
+  background: linear-gradient(90deg, var(--accent1), var(--accent3));
+  border: none;
+  color: #04202b;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.menu-toggle:hover {
+  opacity: 0.9;
+  transform: scale(1.03);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+}
+
+.huge {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.small { font-size: 0.9rem; color: var(--muted); }
+
+.form-row { display: flex; gap: 10px; }
+
+/* === Input Fields === */
+.input input,
+select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: var(--card);
+  color: #e6eef8;
+  width: 100%;
+  transition: border 0.3s, box-shadow 0.3s;
+}
+
+.input input:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent1);
+  box-shadow: 0 0 8px rgba(14,165,233,0.6);
+}
+
+/* === Fix Yellow Autofill === */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px var(--card) inset !important;
+  -webkit-text-fill-color: #e6eef8 !important;
+  transition: background-color 9999s ease-in-out 0s;
+  caret-color: #e6eef8 !important;
+}
+
+/* === Buttons === */
+.btn,
+button {
+  background: linear-gradient(90deg, var(--accent1), var(--accent3));
+  color: #04202b;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn:hover,
+button:hover {
+  opacity: 0.9;
+  transform: scale(1.03);
+}
+
+/* === Table === */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.table th,
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  text-align: left;
+}
+
+.table tr:hover { background: rgba(255,255,255,0.02); }
+
+/* === Delete Button === */
+.delete-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #ff7b7b;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.delete-btn:hover { background: rgba(255,0,0,0.1); }
+
 /* === Toast Notification === */
 .toast {
   visibility: hidden;
@@ -63,31 +236,16 @@ body{margin:0;background:linear-gradient(180deg,#031029 0%, #071429 100%);color:
   bottom: 50px;
 }
 
-/* Optional: Styling for notifications inside the Notifications tab */
-.notif-item {
-  background: rgba(255,255,255,0.05);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  transition: background 0.3s;
-}
-
-.notif-item:hover {
-  background: rgba(255,255,255,0.08);
-}
 /* === Notifications Section === */
 #notifs {
-  max-height: 400px;          /* limit visible height */
-  overflow-y: auto;           /* enable scrolling */
+  max-height: 400px;
+  overflow-y: auto;
   padding-right: 5px;
-  scrollbar-width: thin;      /* for Firefox */
+  scrollbar-width: thin;
   scrollbar-color: #3b82f6 transparent;
 }
 
-#notifs::-webkit-scrollbar {
-  width: 6px;
-}
-
+#notifs::-webkit-scrollbar { width: 6px; }
 #notifs::-webkit-scrollbar-thumb {
   background: #3b82f6;
   border-radius: 4px;
@@ -105,34 +263,31 @@ body{margin:0;background:linear-gradient(180deg,#031029 0%, #071429 100%);color:
   transition: background 0.3s;
 }
 
-#clearAllBtn:hover {
-  background: #d44;
+#clearAllBtn:hover { background: #d44; }
+
+/* === Responsive === */
+@media (max-width: 1000px) {
+  .cards { grid-template-columns: repeat(1, 1fr); }
 }
+
 @media (max-width: 768px) {
-  .dashboard {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+  .menu-toggle { display: inline-block; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    opacity: 0;
   }
 
-  .stats, .card, .quick-add {
-    width: 100%;
-    padding: 10px;
+  .sidebar.active {
+    transform: translateX(0);
+    opacity: 1;
   }
 
-  input, select, button {
-    width: 100%;
-    margin-top: 6px;
-  }
-
-  nav {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .notifications {
-    max-height: 70vh;
-    overflow-y: auto;
+  .main {
+    padding: 16px;
   }
 }
-

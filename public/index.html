@@ -52,6 +52,46 @@
       opacity: 1;
       transform: translateY(0);
     }
+
+    /* === Toggle Button for Mobile === */
+    .menu-toggle {
+      display: none;
+      background: linear-gradient(90deg, var(--accent1), var(--accent3));
+      border: none;
+      color: #04202b;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .menu-toggle:hover {
+      opacity: 0.9;
+      transform: scale(1.03);
+    }
+
+    /* === Sidebar Responsive === */
+    @media (max-width: 768px) {
+      .menu-toggle { display: inline-block; }
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        background: #0f1724;
+        transform: translateX(-100%);
+        opacity: 0;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+        z-index: 999;
+      }
+      .sidebar.active {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      .main {
+        padding: 16px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -176,34 +216,41 @@
   <!-- 🔌 Socket.IO + Notification Script -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
-  <script>
-    const socket = io();
 
-    // Notification sound setup 🎵
+  <script>
+    /* === Sidebar Toggle + Auto Close on Click === */
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'menu-toggle';
+    toggleBtn.textContent = '☰ Menu';
+    document.querySelector('.topbar').prepend(toggleBtn);
+
+    const sidebar = document.querySelector('.sidebar');
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('active');
+    });
+
+    document.querySelectorAll('.nav a').forEach(link => {
+      link.addEventListener('click', () => {
+        sidebar.classList.remove('active');
+      });
+    });
+
+    /* === Popup Notification Logic === */
+    const socket = io();
     const notifSound = new Audio("https://assets.mixkit.co/active_storage/sfx/233/233-preview.mp3");
 
     socket.on('notification', notif => {
       console.log('📩 Notification received:', notif);
 
-      // Play sound
       notifSound.currentTime = 0;
-      notifSound.play().catch(() => {
-        console.warn("🔇 Autoplay blocked, user interaction needed.");
-      });
+      notifSound.play().catch(() => console.warn("🔇 Autoplay blocked."));
 
-      // Create popup
       const popup = document.createElement('div');
       popup.classList.add('notif-popup');
-      popup.innerHTML = `
-        <strong>🔔 ${notif.clientName}</strong><br>
-        ${notif.message}
-      `;
+      popup.innerHTML = `<strong>🔔 ${notif.clientName}</strong><br>${notif.message}`;
       document.body.appendChild(popup);
 
-      // show animation
       setTimeout(() => popup.classList.add('show'), 50);
-
-      // remove after 6 seconds
       setTimeout(() => {
         popup.classList.remove('show');
         setTimeout(() => popup.remove(), 400);
