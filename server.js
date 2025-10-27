@@ -137,16 +137,23 @@ app.get('/api/clients', requireAuth, async (req, res) => {
 });
 
 app.post('/api/clients', requireAuth, async (req, res) => {
-  const { name, phone, plan, dueDate, location, installDate } = req.body;
-  if (!name || !phone || !dueDate)
-    return res.status(400).json({ error: 'name, phone and dueDate required' });
+  const { name, phone, plan, location, installDate, billingCycle } = req.body;
+  if (!name || !phone || !installDate)
+    return res.status(400).json({ error: 'name, phone, and installDate required' });
+
+  // ✅ Automatically compute due date from installation date
+  const cycleDays = billingCycle ? parseInt(billingCycle, 10) : 30;
+  const install = new Date(installDate);
+  install.setDate(install.getDate() + cycleDays);
+  const dueDate = install.toISOString().split('T')[0];
+
   const clients = await readClients();
   const newClient = {
     id: uuidv4(),
     name: name.trim(),
     phone: phone.trim(),
     plan: (plan || '').trim(),
-    dueDate: dueDate.trim(),
+    dueDate,
     location: (location || '').trim(),
     installDate: (installDate || '').trim(),
     status: 'Active',
