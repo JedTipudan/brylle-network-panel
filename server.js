@@ -1,5 +1,5 @@
 /**
- * Pro Secure server.js - Brylle's Network & Data Solution
+ * Pro Secure server.js - Brylle's Network & Data Solution (Render-ready)
  */
 const express = require('express');
 const session = require('express-session');
@@ -9,22 +9,23 @@ const cron = require('node-cron');
 const { v4: uuidv4 } = require('uuid');
 const http = require('http');
 
-const CONFIG_FILE = path.join(__dirname, 'config.json');
-const DATA_DIR = path.join(__dirname, 'data');
-const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
-const NOTIFS_FILE = path.join(DATA_DIR, 'notifications.json');
-const SMS_LOG = path.join(DATA_DIR, 'sms.log');
-
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server);
+
+// ✅ Use Render's environment-safe data directory
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
+const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
+const NOTIFS_FILE = path.join(DATA_DIR, 'notifications.json');
+const SMS_LOG = path.join(DATA_DIR, 'sms.log');
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: 'brylle-secret-key-change-this',
+  secret: process.env.SESSION_SECRET || 'brylle-secret-key-change-this',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 24 * 60 * 60 * 1000 }
@@ -39,14 +40,14 @@ async function ensureDataFiles() {
 }
 
 async function readClients() {
-  const raw = await fs.readFile(CLIENTS_FILE, 'utf8');
+  const raw = await fs.readFile(CLIENTS_FILE, 'utf8').catch(() => '[]');
   return JSON.parse(raw || '[]');
 }
 async function writeClients(arr) {
   await fs.writeFile(CLIENTS_FILE, JSON.stringify(arr, null, 2), 'utf8');
 }
 async function readNotifs() {
-  const raw = await fs.readFile(NOTIFS_FILE, 'utf8');
+  const raw = await fs.readFile(NOTIFS_FILE, 'utf8').catch(() => '[]');
   return JSON.parse(raw || '[]');
 }
 async function appendNotif(n) {
@@ -81,7 +82,9 @@ app.get('/', (req, res) => {
   if (req.session && req.session.user === 'admin') res.redirect('/dashboard');
   else res.redirect('/login.html');
 });
-app.get('/dashboard', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/dashboard', requireAuth, (req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'index.html'))
+);
 
 // 🧠 Auto-update statuses
 app.get('/api/clients', requireAuth, async (req, res) => {
@@ -165,7 +168,7 @@ app.delete('/api/clients/:id', requireAuth, async (req, res) => {
 // Notifications
 app.get('/api/notifications', requireAuth, async (req, res) => res.json(await readNotifs()));
 
-// === Clear All Notifications ===
+// Clear All Notifications
 app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
   try {
     await fs.writeFile(NOTIFS_FILE, '[]', 'utf8');
@@ -175,7 +178,7 @@ app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
   }
 });
 
-// === Run Check Now Function ===
+// Run Check Now Function
 async function runCheckNow() {
   const clients = await readClients();
   const today = formatDateISO(new Date());
@@ -208,7 +211,7 @@ async function runCheckNow() {
   if (updated) await writeClients(clients);
 }
 
-// === Manual Run Check Now Route ===
+// Manual Run Check Now
 app.post('/api/run-check-now', requireAuth, async (req, res) => {
   try {
     await runCheckNow();
@@ -233,18 +236,18 @@ app.post('/login', async (req, res) => {
 });
 app.post('/logout', (req, res) => { req.session.destroy(() => {}); res.json({ ok: true }); });
 
-// Static
+// Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ===== Server start =====
 (async () => {
   await ensureDataFiles();
-  const port = process.env.PORT || 3000;
-  server.listen(port, () => console.log(`✅ Running at http://localhost:${port}`));
+  const port = process.env.PORT || 10000;
+  server.listen(port, () => console.log(`✅ Running on port ${port}`));
 
   io.on('connection', s => console.log('Socket connected:', s.id));
 
-  // Daily auto check (every 8 AM)
+  // Daily auto check (8 AM)
   cron.schedule('0 8 * * *', async () => {
     console.log('⏰ Daily Check Triggered');
     await runCheckNow();
