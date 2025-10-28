@@ -12,6 +12,7 @@
     "express-session": "^1.17.3",
     "node-cron": "^3.0.2",
     "nodemailer": "^7.0.10",
+    "resend": "^6.3.0",
     "socket.io": "^4.7.2",
     "uuid": "^9.0.0"
   },
