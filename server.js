@@ -60,20 +60,21 @@ const appendNotif = async n => {
 };
 const formatDateISO = d => d.toISOString().slice(0, 10);
 
-// ===== Email Function =====
+// ======= Email Function (Resend Test Mode - no domain verify) =======
 async function sendEmail(subject, html) {
   try {
     const data = await resend.emails.send({
-      from: EMAIL_USER,
-      to: ALERT_EMAIL,
+      from: 'onboarding@resend.dev',   // ✅ official Resend test sender (no domain verification required)
+      to: ALERT_EMAIL,                  // your Gmail in .env
       subject,
       html,
     });
-    console.log('📧 Email sent:', data);
-  } catch (err) {
-    console.error('❌ Email failed:', err);
+    console.log('📧 Email sent via Resend:', data);
+  } catch (error) {
+    console.error('❌ Email failed:', error);
   }
 }
+
 
 // ===== Auth =====
 function requireAuth(req, res, next) {
