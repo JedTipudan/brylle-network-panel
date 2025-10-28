@@ -87,26 +87,24 @@ function formatDateISO(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-async function sendEmail(subject, text) {
+import { Resend } from 'resend';
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function sendTestEmail() {
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        from: "Brylle Network <onboarding@resend.dev>",
-        to: process.env.ALERT_EMAIL,
-        subject,
-        text
-      })
+    const data = await resend.emails.send({
+      from: 'hangecoder1821@gmail.com',   // ✅ your Resend account email
+      to: 'hangecoder1821@gmail.com',     // ✅ same address for test mode
+      subject: 'Test Email from Render + Resend',
+      html: '<strong>This is a test email via Resend (testing mode).</strong>',
     });
-    console.log("📧 Email sent via Resend:", await res.text());
-  } catch (err) {
-    console.error("❌ Email via Resend failed:", err);
+
+    console.log('📧 Email sent via Resend:', data);
+  } catch (error) {
+    console.error('❌ Email failed:', error);
   }
 }
+
 
 
 // ======= Auth Middleware =======
