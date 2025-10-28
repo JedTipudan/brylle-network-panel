@@ -10,6 +10,7 @@ const cron = require('node-cron');
 const { v4: uuidv4 } = require('uuid');
 const http = require('http');
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 const server = http.createServer(app);
@@ -23,6 +24,7 @@ const NOTIFS_FILE = path.join(DATA_DIR, 'notifications.json');
 const SMS_LOG = path.join(DATA_DIR, 'sms.log');
 
 // ======= Email Setup =======
+const resend = new Resend(process.env.RESEND_API_KEY);
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
 const ALERT_EMAIL = process.env.ALERT_EMAIL || EMAIL_USER;
@@ -47,7 +49,6 @@ app.use(session({
 async function ensureDataFiles() {
   await fs.mkdir(DATA_DIR, { recursive: true });
 
-  // 🧹 Auto-wipe logic: If file exists but corrupted or stuck, reset to empty
   const resetIfCorrupt = async (file, defaultContent) => {
     try {
       const data = await fs.readFile(file, 'utf8');
@@ -87,25 +88,23 @@ function formatDateISO(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-import { Resend } from 'resend';
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-async function sendTestEmail() {
+// ======= Email Functions =======
+async function sendEmail(subject, html) {
   try {
+    // Use Resend API
     const data = await resend.emails.send({
-      from: 'hangecoder1821@gmail.com',   // ✅ your Resend account email
-      to: 'hangecoder1821@gmail.com',     // ✅ same address for test mode
-      subject: 'Test Email from Render + Resend',
-      html: '<strong>This is a test email via Resend (testing mode).</strong>',
+      from: 'hangecoder1821@gmail.com', // ✅ must match verified domain or sender
+      to: 'hangecoder1821@gmail.com',   // ✅ test mode only
+      subject,
+      html,
     });
-
     console.log('📧 Email sent via Resend:', data);
+    return data;
   } catch (error) {
     console.error('❌ Email failed:', error);
+    throw error;
   }
 }
-
-
 
 // ======= Auth Middleware =======
 function requireAuth(req, res, next) {
@@ -217,10 +216,10 @@ app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
   }
 });
 
-// 🧪 Test Email (replaces run-check-now)
+// 🧪 Test Email Route
 app.post('/api/test-email', requireAuth, async (req, res) => {
   try {
-    await sendEmail('✅ Test Email from Brylle’s Network', 'Your email setup is working perfectly!');
+    await sendEmail('✅ Test Email from Brylle’s Network', '<strong>Your email setup is working perfectly!</strong>');
     res.json({ ok: true, message: 'Test email sent successfully!' });
   } catch (err) {
     console.error('Test email failed:', err);
@@ -253,7 +252,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
   io.on('connection', s => console.log('Socket connected:', s.id));
 
-  // Daily check at 8 AM
   cron.schedule('0 8 * * *', async () => {
     console.log('⏰ Daily Check Triggered');
   }, { timezone: 'Asia/Manila' });
