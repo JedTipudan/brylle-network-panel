@@ -91,20 +91,34 @@ function formatDateISO(d) {
 // ======= Email Functions =======
 async function sendEmail(subject, html) {
   try {
-    // Use Resend API
-    const data = await resend.emails.send({
-      from: 'hangecoder1821@gmail.com', // ✅ must match verified domain or sender
-      to: 'hangecoder1821@gmail.com',   // ✅ test mode only
-      subject,
-      html,
-    });
-    console.log('📧 Email sent via Resend:', data);
-    return data;
+    if (process.env.USE_RESEND === 'true' && process.env.RESEND_API_KEY) {
+      // --- Resend (for verified domain use only) ---
+      const data = await resend.emails.send({
+        from: 'no-reply@yourdomain.com',  // your domain when verified
+        to: ALERT_EMAIL,
+        subject,
+        html,
+      });
+      console.log('📧 Email sent via Resend:', data);
+      return data;
+    } else {
+      // --- Gmail fallback ---
+      if (!transporter) throw new Error('Gmail transporter not configured');
+      const info = await transporter.sendMail({
+        from: EMAIL_USER,
+        to: ALERT_EMAIL,
+        subject,
+        html,
+      });
+      console.log('📧 Email sent via Gmail:', info.messageId);
+      return info;
+    }
   } catch (error) {
     console.error('❌ Email failed:', error);
     throw error;
   }
 }
+
 
 // ======= Auth Middleware =======
 function requireAuth(req, res, next) {
