@@ -1,5 +1,13 @@
 [
   {
+    "id": "caa13589-d688-42db-b3ef-089c6d07da48",
+    "time": "2025-10-28T00:00:01.007Z",
+    "clientId": "7ede15c0-1b8d-4561-b8e5-c2e011236782",
+    "clientName": "Jed Tipudan",
+    "dueDate": "2025-10-27",
+    "message": "Jed Tipudan is now inactive (due 2025-10-27)."
+  },
+  {
     "id": "746faea7-a9d4-4109-91cb-0acb10f51b2b",
     "time": "2025-10-27T10:08:52.540Z",
     "clientId": "7ede15c0-1b8d-4561-b8e5-c2e011236782",
