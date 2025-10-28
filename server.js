@@ -16,7 +16,7 @@ const server = http.createServer(app);
 const io = require('socket.io')(server);
 
 // ======= Paths =======
-const DATA_DIR = process.env.DATA_DIR || '/data';
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
 const NOTIFS_FILE = path.join(DATA_DIR, 'notifications.json');
