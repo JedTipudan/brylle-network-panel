@@ -1,5 +1,5 @@
 /**
- * Pro Secure server.js - Brylle's Network & Data Solution (Render-ready + Email + Auto Refresh)
+ * Pro Secure server.js - Brylle's Network & Data Solution (Render-ready + Email + Auto Refresh + Auto Wipe + Test Email)
  */
 require('dotenv').config();
 const express = require('express');
@@ -9,20 +9,20 @@ const path = require('path');
 const cron = require('node-cron');
 const { v4: uuidv4 } = require('uuid');
 const http = require('http');
-const nodemailer = require('nodemailer'); // ✅ Email support
+const nodemailer = require('nodemailer');
 
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server);
 
-// ✅ Use Render's environment-safe data directory
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+// ======= Paths =======
+const DATA_DIR = process.env.DATA_DIR || '/data';
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
 const NOTIFS_FILE = path.join(DATA_DIR, 'notifications.json');
 const SMS_LOG = path.join(DATA_DIR, 'sms.log');
 
-// Email config
+// ======= Email Setup =======
 const EMAIL_USER = process.env.EMAIL_USER;
 const EMAIL_PASS = process.env.EMAIL_PASS;
 const ALERT_EMAIL = process.env.ALERT_EMAIL || EMAIL_USER;
@@ -32,7 +32,7 @@ const transporter = EMAIL_USER && EMAIL_PASS ? nodemailer.createTransport({
   auth: { user: EMAIL_USER, pass: EMAIL_PASS }
 }) : null;
 
-// Middleware
+// ======= Middleware =======
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -43,11 +43,23 @@ app.use(session({
   cookie: { maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-// ===== Utility =====
+// ======= Utility =======
 async function ensureDataFiles() {
   await fs.mkdir(DATA_DIR, { recursive: true });
-  try { await fs.access(CLIENTS_FILE); } catch { await fs.writeFile(CLIENTS_FILE, '[]'); }
-  try { await fs.access(NOTIFS_FILE); } catch { await fs.writeFile(NOTIFS_FILE, '[]'); }
+
+  // 🧹 Auto-wipe logic: If file exists but corrupted or stuck, reset to empty
+  const resetIfCorrupt = async (file, defaultContent) => {
+    try {
+      const data = await fs.readFile(file, 'utf8');
+      JSON.parse(data);
+    } catch {
+      console.log(`🧹 Resetting corrupted file: ${file}`);
+      await fs.writeFile(file, JSON.stringify(defaultContent, null, 2), 'utf8');
+    }
+  };
+
+  await resetIfCorrupt(CLIENTS_FILE, []);
+  await resetIfCorrupt(NOTIFS_FILE, []);
   try { await fs.access(SMS_LOG); } catch { await fs.writeFile(SMS_LOG, ''); }
 }
 
@@ -93,13 +105,13 @@ async function sendEmail(subject, text) {
   }
 }
 
-// ===== Auth Middleware =====
+// ======= Auth Middleware =======
 function requireAuth(req, res, next) {
   if (req.session && req.session.user === 'admin') return next();
   res.redirect('/login.html');
 }
 
-// ===== Routes =====
+// ======= Routes =======
 app.get('/', (req, res) => {
   if (req.session && req.session.user === 'admin') res.redirect('/dashboard');
   else res.redirect('/login.html');
@@ -108,7 +120,7 @@ app.get('/dashboard', requireAuth, (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
 
-// 🧠 Auto-update statuses (Fixed Manila Time)
+// 🧠 Clients + Auto Status Update
 app.get('/api/clients', requireAuth, async (req, res) => {
   const clients = await readClients();
 
@@ -149,7 +161,7 @@ app.post('/api/clients', requireAuth, async (req, res) => {
   res.json(newClient);
 });
 
-// 🔁 Paid logic
+// Paid logic
 app.post('/api/clients/:id/pay', requireAuth, async (req, res) => {
   const clients = await readClients();
   const client = clients.find(c => c.id === req.params.id);
@@ -203,51 +215,14 @@ app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
   }
 });
 
-// Run Check Now Function + Email
-async function runCheckNow() {
-  const clients = await readClients();
-  const todayPH = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-  const todayOnly = new Date(todayPH.getFullYear(), todayPH.getMonth(), todayPH.getDate());
-  let updated = false;
-
-  for (const c of clients) {
-    if (!c.dueDate) continue;
-    const duePH = new Date(new Date(c.dueDate).toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-    const dueOnly = new Date(duePH.getFullYear(), duePH.getMonth(), duePH.getDate());
-
-    if (todayOnly > dueOnly) {
-      if (c.status !== 'Inactive') {
-        c.status = 'Inactive';
-        updated = true;
-        const msg = `${c.name} is now inactive (due ${c.dueDate}).`;
-
-        const notif = {
-          id: uuidv4(),
-          time: new Date().toISOString(),
-          clientId: c.id,
-          clientName: c.name,
-          dueDate: c.dueDate,
-          message: msg
-        };
-
-        await appendNotif(notif);
-        io.emit('notification', notif);
-        await sendEmail(`Client Overdue: ${c.name}`, msg); // ✅ Email alert
-      }
-    }
-  }
-
-  if (updated) await writeClients(clients);
-}
-
-// Manual Run Check Now
-app.post('/api/run-check-now', requireAuth, async (req, res) => {
+// 🧪 Test Email (replaces run-check-now)
+app.post('/api/test-email', requireAuth, async (req, res) => {
   try {
-    await runCheckNow();
-    res.json({ ok: true, message: 'Check completed!' });
+    await sendEmail('✅ Test Email from Brylle’s Network', 'Your email setup is working perfectly!');
+    res.json({ ok: true, message: 'Test email sent successfully!' });
   } catch (err) {
-    console.error('Manual check error:', err);
-    res.status(500).json({ error: 'Manual check failed' });
+    console.error('Test email failed:', err);
+    res.status(500).json({ error: 'Test email failed' });
   }
 });
 
@@ -268,7 +243,7 @@ app.post('/logout', (req, res) => { req.session.destroy(() => {}); res.json({ ok
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ===== Server start =====
+// ======= Start Server =======
 (async () => {
   await ensureDataFiles();
   const port = process.env.PORT || 10000;
@@ -276,9 +251,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
   io.on('connection', s => console.log('Socket connected:', s.id));
 
-  // Daily auto check (8 AM Manila Time)
+  // Daily check at 8 AM
   cron.schedule('0 8 * * *', async () => {
     console.log('⏰ Daily Check Triggered');
-    await runCheckNow();
   }, { timezone: 'Asia/Manila' });
 })();
