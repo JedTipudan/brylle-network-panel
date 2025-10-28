@@ -165,15 +165,25 @@ els.addBtn.onclick = async () => {
   loadClients();
 };
 
-// === Run Check ===
+// === Run Check (with sound + email + popup) ===
 els.runCheck.onclick = async () => {
-  showToast('Running due-date check...');
-  const res = await api('/api/run-check-now', { method: 'POST' });
-  showToast(res.message || 'Check completed!');
+  showToast('🔍 Running check and sending test email...');
   playSound();
-  loadClients();
-  loadNotifications();
+
+  try {
+    const res = await api('/api/test-email', { method: 'POST' });
+    showToast(res.message || '✅ Email sent successfully!');
+    playSound();
+
+    // Optional: popup alert for visibility
+    alert('✅ Email sent successfully! Check your Gmail inbox.');
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Email failed to send.');
+    alert('❌ Email failed. Please check your Gmail credentials.');
+  }
 };
+
 
 // === Notifications (with scroll + clear all) ===
 async function loadNotifications() {
