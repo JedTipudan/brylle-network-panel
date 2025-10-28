@@ -1,174 +1,120 @@
 /**
- * Pro Secure server.js - Brylle's Network & Data Solution (Render-ready + Email + Auto Refresh + Auto Wipe + Test Email)
+ * Brylle’s Network & Data Solution
+ * Render-ready + Resend Email Test Mode (using domain https://brylle-network-panel.onrender.com)
  */
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const fs = require('fs').promises;
 const path = require('path');
+const http = require('http');
 const cron = require('node-cron');
 const { v4: uuidv4 } = require('uuid');
-const http = require('http');
-const nodemailer = require('nodemailer');
+const socketio = require('socket.io');
 const { Resend } = require('resend');
 
 const app = express();
 const server = http.createServer(app);
-const io = require('socket.io')(server);
+const io = socketio(server);
 
-// ======= Paths =======
+// ===== Paths =====
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
 const NOTIFS_FILE = path.join(DATA_DIR, 'notifications.json');
 const SMS_LOG = path.join(DATA_DIR, 'sms.log');
 
-// ======= Email Setup =======
+// ===== Email (Resend) =====
 const resend = new Resend(process.env.RESEND_API_KEY);
 const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
 const ALERT_EMAIL = process.env.ALERT_EMAIL || EMAIL_USER;
 
-const transporter = EMAIL_USER && EMAIL_PASS ? nodemailer.createTransport({
-  service: 'gmail',
-  auth: { user: EMAIL_USER, pass: EMAIL_PASS }
-}) : null;
-
-// ======= Middleware =======
+// ===== Middleware =====
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(session({
   secret: process.env.SESSION_SECRET || 'brylle-secret-key-change-this',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 }
+  cookie: { maxAge: 86400000 }
 }));
 
-// ======= Utility =======
+// ===== Utilities =====
 async function ensureDataFiles() {
   await fs.mkdir(DATA_DIR, { recursive: true });
-
-  const resetIfCorrupt = async (file, defaultContent) => {
-    try {
-      const data = await fs.readFile(file, 'utf8');
-      JSON.parse(data);
-    } catch {
-      console.log(`🧹 Resetting corrupted file: ${file}`);
-      await fs.writeFile(file, JSON.stringify(defaultContent, null, 2), 'utf8');
-    }
+  const resetIfCorrupt = async (file, def) => {
+    try { JSON.parse(await fs.readFile(file, 'utf8')); }
+    catch { await fs.writeFile(file, JSON.stringify(def, null, 2)); }
   };
-
   await resetIfCorrupt(CLIENTS_FILE, []);
   await resetIfCorrupt(NOTIFS_FILE, []);
   try { await fs.access(SMS_LOG); } catch { await fs.writeFile(SMS_LOG, ''); }
 }
-
-async function readClients() {
-  const raw = await fs.readFile(CLIENTS_FILE, 'utf8').catch(() => '[]');
-  return JSON.parse(raw || '[]');
-}
-async function writeClients(arr) {
-  await fs.writeFile(CLIENTS_FILE, JSON.stringify(arr, null, 2), 'utf8');
-}
-async function readNotifs() {
-  const raw = await fs.readFile(NOTIFS_FILE, 'utf8').catch(() => '[]');
-  return JSON.parse(raw || '[]');
-}
-async function appendNotif(n) {
+const readClients = async () => JSON.parse(await fs.readFile(CLIENTS_FILE, 'utf8').catch(() => '[]'));
+const writeClients = arr => fs.writeFile(CLIENTS_FILE, JSON.stringify(arr, null, 2));
+const readNotifs = async () => JSON.parse(await fs.readFile(NOTIFS_FILE, 'utf8').catch(() => '[]'));
+const appendNotif = async n => {
   const arr = await readNotifs();
   arr.unshift(n);
-  await fs.writeFile(NOTIFS_FILE, JSON.stringify(arr.slice(0, 200), null, 2), 'utf8');
-}
+  await fs.writeFile(NOTIFS_FILE, JSON.stringify(arr.slice(0, 200), null, 2));
+};
+const formatDateISO = d => d.toISOString().slice(0, 10);
 
-function formatDateISO(d) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-// ======= Email Functions =======
+// ===== Email Function =====
 async function sendEmail(subject, html) {
   try {
-    if (process.env.USE_RESEND === 'true' && process.env.RESEND_API_KEY) {
-      // --- Resend (for verified domain use only) ---
-      const data = await resend.emails.send({
-        from: 'no-reply@yourdomain.com',  // your domain when verified
-        to: ALERT_EMAIL,
-        subject,
-        html,
-      });
-      console.log('📧 Email sent via Resend:', data);
-      return data;
-    } else {
-      // --- Gmail fallback ---
-      if (!transporter) throw new Error('Gmail transporter not configured');
-      const info = await transporter.sendMail({
-        from: EMAIL_USER,
-        to: ALERT_EMAIL,
-        subject,
-        html,
-      });
-      console.log('📧 Email sent via Gmail:', info.messageId);
-      return info;
-    }
-  } catch (error) {
-    console.error('❌ Email failed:', error);
-    throw error;
+    const data = await resend.emails.send({
+      from: EMAIL_USER,
+      to: ALERT_EMAIL,
+      subject,
+      html,
+    });
+    console.log('📧 Email sent:', data);
+  } catch (err) {
+    console.error('❌ Email failed:', err);
   }
 }
 
-
-// ======= Auth Middleware =======
+// ===== Auth =====
 function requireAuth(req, res, next) {
-  if (req.session && req.session.user === 'admin') return next();
+  if (req.session?.user === 'admin') return next();
   res.redirect('/login.html');
 }
 
-// ======= Routes =======
+// ===== Routes =====
 app.get('/', (req, res) => {
-  if (req.session && req.session.user === 'admin') res.redirect('/dashboard');
+  if (req.session?.user === 'admin') res.redirect('/dashboard');
   else res.redirect('/login.html');
 });
-app.get('/dashboard', requireAuth, (req, res) =>
+
+app.get('/dashboard', requireAuth, (_, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
 
-// 🧠 Clients + Auto Status Update
-app.get('/api/clients', requireAuth, async (req, res) => {
+// 👥 Clients
+app.get('/api/clients', requireAuth, async (_, res) => {
   const clients = await readClients();
-
-  const todayPH = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-  const todayOnly = new Date(todayPH.getFullYear(), todayPH.getMonth(), todayPH.getDate());
-
-  for (const c of clients) {
-    if (!c.dueDate) continue;
-    const duePH = new Date(new Date(c.dueDate).toLocaleString("en-US", { timeZone: "Asia/Manila" }));
-    const dueOnly = new Date(duePH.getFullYear(), duePH.getMonth(), duePH.getDate());
-    c.status = todayOnly > dueOnly ? 'Inactive' : 'Active';
-  }
-
+  const today = new Date().toISOString().slice(0, 10);
+  for (const c of clients) if (c.dueDate) c.status = c.dueDate < today ? 'Inactive' : 'Active';
   await writeClients(clients);
   res.json(clients);
 });
 
-// Add client
 app.post('/api/clients', requireAuth, async (req, res) => {
   const { name, phone, plan, location, installDate, billingCycle } = req.body;
   if (!name || !phone || !installDate) return res.status(400).json({ error: 'Missing fields' });
 
   const cycle = parseInt(billingCycle || 30, 10);
-  const install = new Date(installDate);
-  install.setDate(install.getDate() + cycle);
-  const dueDate = formatDateISO(install);
+  const nextDue = new Date(installDate);
+  nextDue.setDate(nextDue.getDate() + cycle);
 
   const clients = await readClients();
   const newClient = {
     id: uuidv4(),
     name, phone, plan, location,
     installDate, billingCycle: cycle,
-    dueDate, status: 'Active',
+    dueDate: formatDateISO(nextDue),
+    status: 'Active',
     createdAt: new Date().toISOString()
   };
   clients.push(newClient);
@@ -176,21 +122,17 @@ app.post('/api/clients', requireAuth, async (req, res) => {
   res.json(newClient);
 });
 
-// Paid logic
+// 💰 Payment
 app.post('/api/clients/:id/pay', requireAuth, async (req, res) => {
   const clients = await readClients();
   const client = clients.find(c => c.id === req.params.id);
   if (!client) return res.status(404).json({ error: 'Client not found' });
 
-  const billingCycle = parseInt(client.billingCycle || 30, 10);
-  const currentDue = new Date(client.dueDate || client.installDate || Date.now());
-  currentDue.setDate(currentDue.getDate() + billingCycle);
-  const nextDue = formatDateISO(currentDue);
-
-  client.dueDate = nextDue;
+  const cycle = parseInt(client.billingCycle || 30, 10);
+  const next = new Date(client.dueDate || Date.now());
+  next.setDate(next.getDate() + cycle);
+  client.dueDate = formatDateISO(next);
   client.status = 'Active';
-  client.paidAt = new Date().toISOString();
-
   await writeClients(clients);
 
   const notif = {
@@ -198,16 +140,15 @@ app.post('/api/clients/:id/pay', requireAuth, async (req, res) => {
     time: new Date().toISOString(),
     clientId: client.id,
     clientName: client.name,
-    dueDate: client.dueDate,
-    message: `${client.name} marked as paid. Next due: ${nextDue}`
+    message: `${client.name} marked as paid. Next due: ${client.dueDate}`,
   };
   await appendNotif(notif);
   io.emit('notification', notif);
 
-  res.json({ ok: true, message: 'Payment processed', client });
+  res.json({ ok: true });
 });
 
-// Delete client
+// 🗑 Delete
 app.delete('/api/clients/:id', requireAuth, async (req, res) => {
   const clients = await readClients();
   const idx = clients.findIndex(c => c.id === req.params.id);
@@ -217,31 +158,26 @@ app.delete('/api/clients/:id', requireAuth, async (req, res) => {
   res.json({ ok: true, removed });
 });
 
-// Notifications
-app.get('/api/notifications', requireAuth, async (req, res) => res.json(await readNotifs()));
-
-// Clear All Notifications
-app.delete('/api/notifications/clear', requireAuth, async (req, res) => {
-  try {
-    await fs.writeFile(NOTIFS_FILE, '[]', 'utf8');
-    res.json({ ok: true, message: 'All notifications cleared' });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to clear notifications' });
-  }
+// 🔔 Notifications
+app.get('/api/notifications', requireAuth, async (_, res) => res.json(await readNotifs()));
+app.delete('/api/notifications/clear', requireAuth, async (_, res) => {
+  await fs.writeFile(NOTIFS_FILE, '[]');
+  res.json({ ok: true });
 });
 
-// 🧪 Test Email Route
-app.post('/api/test-email', requireAuth, async (req, res) => {
+// 🧪 Test Email
+app.post('/api/test-email', requireAuth, async (_, res) => {
   try {
-    await sendEmail('✅ Test Email from Brylle’s Network', '<strong>Your email setup is working perfectly!</strong>');
-    res.json({ ok: true, message: 'Test email sent successfully!' });
+    await sendEmail('✅ Test Email from Brylle’s Network Panel',
+      '<b>Your Render + Resend setup is working!</b>');
+    res.json({ ok: true, message: 'Test email sent!' });
   } catch (err) {
     console.error('Test email failed:', err);
-    res.status(500).json({ error: 'Test email failed' });
+    res.status(500).json({ error: 'Email test failed' });
   }
 });
 
-// Auth
+// 🔐 Login
 app.post('/login', async (req, res) => {
   const raw = await fs.readFile(CONFIG_FILE, 'utf8').catch(() => '{}');
   const cfg = JSON.parse(raw);
@@ -253,20 +189,20 @@ app.post('/login', async (req, res) => {
   }
   res.status(401).json({ error: 'Invalid credentials' });
 });
-app.post('/logout', (req, res) => { req.session.destroy(() => {}); res.json({ ok: true }); });
 
-// Static files
+app.post('/logout', (req, res) => {
+  req.session.destroy(() => res.json({ ok: true }));
+});
+
+// 📂 Static
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ======= Start Server =======
+// ===== Start =====
 (async () => {
   await ensureDataFiles();
   const port = process.env.PORT || 10000;
-  server.listen(port, () => console.log(`✅ Running on port ${port}`));
+  server.listen(port, () => console.log(`✅ Running on ${port}`));
 
   io.on('connection', s => console.log('Socket connected:', s.id));
-
-  cron.schedule('0 8 * * *', async () => {
-    console.log('⏰ Daily Check Triggered');
-  }, { timezone: 'Asia/Manila' });
+  cron.schedule('0 8 * * *', () => console.log('⏰ Daily check triggered'), { timezone: 'Asia/Manila' });
 })();
