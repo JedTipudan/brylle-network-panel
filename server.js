@@ -88,22 +88,26 @@ function formatDateISO(d) {
 }
 
 async function sendEmail(subject, text) {
-  if (!transporter) {
-    console.log('⚠️ Email not configured');
-    return;
-  }
   try {
-    await transporter.sendMail({
-      from: EMAIL_USER,
-      to: ALERT_EMAIL,
-      subject,
-      text
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: "Brylle Network <onboarding@resend.dev>",
+        to: process.env.ALERT_EMAIL,
+        subject,
+        text
+      })
     });
-    console.log(`📧 Email sent: ${subject}`);
+    console.log("📧 Email sent via Resend:", await res.text());
   } catch (err) {
-    console.error('❌ Email failed:', err);
+    console.error("❌ Email via Resend failed:", err);
   }
 }
+
 
 // ======= Auth Middleware =======
 function requireAuth(req, res, next) {
